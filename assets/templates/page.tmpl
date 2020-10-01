@@ -35,7 +35,7 @@
         <div class="column">
       {{ range $i, $line := $page.lines }}
         {{ if eq $line.type "markdown" }}
-          <div class="panel">
+          <div class="panel spacing-top">
             <iframe frameborder="0" marginheight="0" marginwidth="0" width="100%" height="100%" scrolling="no" onload="resize(this)" class="panel-body no-borders" src="{{ $root }}markdown/{{ $page.nonce }}/{{ $line.nonce }}"></iframe>
           </div>
         {{ else }}
@@ -50,7 +50,6 @@
         </div>
       </div>
     </section>
-
   </section>
 </body>
 </html>
