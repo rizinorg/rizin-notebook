@@ -1,0 +1,45 @@
+{{ $root := .root }}<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Rizin Notebook</title>
+    <link rel="stylesheet" href="{{ $root }}static/spectre-icons.min.css">
+    <link rel="stylesheet" href="{{ $root }}static/spectre.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+        .spacing-top { margin: 3px 0px 0px 0px; }
+        .spacing-left { margin: 0px 3px 0px 0px; }
+        .align-center { text-align: center; }
+    </style>
+</head>
+<body>
+    <section class="container grid-960 mt-10">
+        <header class="navbar">
+            <section class="navbar-section">
+                <a href="{{ $root }}" class="navbar-brand mr-10">Rizin Notebook</a>
+            </section>
+            <section class="navbar-section">
+                <a href="{{ $root }}new" class="btn btn-primary">New Page</a>
+            </section>
+        </header>
+        <section class="container">
+            <div class="columns">
+                <div class="column">
+                    {{ $length := len .list }}{{ if eq $length 0 }}
+                    <div class="input-group spacing-top">
+                        <span class="input-group-addon align-center">To start, create a new page.</span>
+                    </div>
+                    {{ else }}{{ range $i, $page := .list }}
+                    <div class="input-group spacing-top">
+                        <span class="input-group-addon spacing-left">{{ $page.title }}</span>
+                        <a class="btn btn-action spacing-left" href="{{ $root }}open/{{ $page.nonce }}">
+                            <i class="icon icon-forward">View</i>
+                        </a>
+                    </div>
+                    {{ end }}{{ end }}
+                </div>
+            </div>
+        </section>
+    </section>
+</body>
+</html>
