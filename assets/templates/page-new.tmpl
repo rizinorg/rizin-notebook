@@ -1,4 +1,4 @@
-{{ $root := .root }}{{ $page := .page }}<!DOCTYPE html>
+{{ $root := .root }}{{ $page := .page }}{{ $nlen := len .nonce }}<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -27,15 +27,22 @@
     <section class="container">
       <div class="columns">
         <div class="column">
-          <form action="{{ $root }}edit" method="POST">
+          <form action="{{ $root }}edit" method="POST" enctype="multipart/form-data">
             <div class="form-group">
               <input type="hidden" name="nonce" value="{{ .nonce }}" />
               <input type="text" class="form-input" name="title" value="{{ .title }}" placeholder="Notebook page title"/>
+              {{ if lt $nlen 1 }}
+              <br>
+              <label for="binary">Choose a binary to open: </label>
+              <input type="file" id="binary" name="binary">
+              {{ end }}
             </div>
-            <div class="form-group">{{ $nlen := len .nonce }}
+            <div class="form-group">
               <button class="btn btn-primary" type="submit">{{ if lt $nlen 1 }}Create{{ else }}Save{{ end }}</button>
               <a class="btn" href="{{ $root }}">Cancel</a>
-              {{ if gt $nlen 1 }}<a class="btn float-right" href="{{ $root }}delete/{{ .nonce }}">Delete</a>{{ end }}
+              {{ if gt $nlen 0 }}
+              <a class="btn float-right" href="{{ $root }}delete/{{ .nonce }}">Delete</a>
+              {{ end }}
             </div>
           </form>
         </div>

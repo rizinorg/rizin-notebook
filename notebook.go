@@ -60,6 +60,7 @@ type Notebook struct {
 	pages   gin.H
 	nonces  []string
 	storage string
+	pipes   map[string]*Rizin
 }
 
 func NewNotebook(storage string) *Notebook {
@@ -81,7 +82,7 @@ func NewNotebook(storage string) *Notebook {
 		nonces = append(nonces, nonce)
 	}
 	sort.Strings(nonces)
-	return &Notebook{pages: pages, nonces: nonces, storage: storage}
+	return &Notebook{pages: pages, nonces: nonces, storage: storage, pipes: map[string]*Rizin{}}
 }
 
 func (n *Notebook) list() []gin.H {
@@ -90,9 +91,12 @@ func (n *Notebook) list() []gin.H {
 	pages := make([]gin.H, len(n.nonces))
 	for i, nonce := range n.nonces {
 		page := n.pages[nonce].(gin.H)
+		pipe := n.pipes[nonce]
+
 		pages[i] = gin.H{
 			"title": page["title"],
 			"nonce": nonce,
+			"pipe":  pipe != nil,
 		}
 	}
 
@@ -143,6 +147,36 @@ func (n *Notebook) newmd(nonce string) string {
 	return ""
 }
 
+func (n *Notebook) newcmd(nonce, command string) string {
+	if len(nonce) != PAGE_NONCE_SIZE {
+		return ""
+	}
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if data, ok := n.pages[nonce]; ok {
+		page := data.(gin.H)
+		var enonce = Nonce(ELEMENT_NONCE_SIZE)
+		for {
+			if _, err := n.file(nonce, enonce+".out"); err != nil {
+				break
+			}
+			enonce = Nonce(ELEMENT_NONCE_SIZE)
+		}
+		page["lines"] = append(page["lines"].([]interface{}), gin.H{
+			"type":    "command",
+			"nonce":   enonce,
+			"command": command,
+		})
+		filepath := path.Join(n.storage, nonce, PAGE_FILE)
+		bytes, _ := json.MarshalIndent(page, "", "\t")
+		if ioutil.WriteFile(filepath, bytes, 0644) == nil {
+			n.pages[nonce] = page
+			return enonce
+		}
+	}
+	return ""
+}
+
 func (n *Notebook) deleteElem(nonce, enonce string, markdown bool) bool {
 	if len(nonce) != PAGE_NONCE_SIZE || len(enonce) != ELEMENT_NONCE_SIZE {
 		return false
@@ -150,10 +184,8 @@ func (n *Notebook) deleteElem(nonce, enonce string, markdown bool) bool {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 	if data, ok := n.pages[nonce]; ok {
-		key := "nonce"
 		suffix := ".md"
 		if !markdown {
-			key = "output"
 			suffix = ".out"
 		}
 		page := data.(gin.H)
@@ -162,7 +194,7 @@ func (n *Notebook) deleteElem(nonce, enonce string, markdown bool) bool {
 		}
 
 		lines := page["lines"].([]interface{})
-		if idx := findLineByKey(lines, key, enonce); idx > -1 {
+		if idx := findLineByKey(lines, "nonce", enonce); idx > -1 {
 			page["lines"] = append(lines[:idx], lines[idx+1:]...)
 		}
 
@@ -176,7 +208,7 @@ func (n *Notebook) deleteElem(nonce, enonce string, markdown bool) bool {
 	return false
 }
 
-func (n *Notebook) new(title string) string {
+func (n *Notebook) new(title, filename, binary string) string {
 	if len(title) < 1 {
 		return ""
 	}
@@ -191,9 +223,11 @@ func (n *Notebook) new(title string) string {
 		nonce = Nonce(PAGE_NONCE_SIZE)
 	}
 	data := gin.H{
-		"title": title,
-		"nonce": nonce,
-		"lines": []interface{}{},
+		"title":    title,
+		"nonce":    nonce,
+		"filename": filename,
+		"binary":   binary,
+		"lines":    []interface{}{},
 	}
 	if err := os.MkdirAll(path.Join(n.storage, nonce), os.ModePerm); err != nil {
 		return ""
@@ -245,6 +279,50 @@ func (n *Notebook) delete(nonce string) bool {
 		return true
 	}
 	return false
+}
+
+func (n *Notebook) open(nonce string, open bool) *Rizin {
+	if len(nonce) != PAGE_NONCE_SIZE {
+		return nil
+	}
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if p, ok := n.pipes[nonce]; ok {
+		return p
+	}
+	if p, ok := n.pages[nonce]; ok && open {
+		page := p.(gin.H)
+		filepath := path.Join(n.storage, nonce, page["binary"].(string))
+		// This should be async.
+		rizin := NewRizin(filepath)
+		if rizin == nil {
+			return nil
+		}
+		n.pipes[nonce] = rizin
+		return rizin
+	}
+	return nil
+}
+
+func (n *Notebook) close(nonce string) {
+	if len(nonce) != PAGE_NONCE_SIZE {
+		return
+	}
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if p, ok := n.pipes[nonce]; ok {
+		p.close()
+		delete(n.pipes, nonce)
+	}
+}
+
+func (n *Notebook) exists(paths ...string) bool {
+	args := append([]string{n.storage}, paths...)
+	_, err := os.Stat(path.Join(args...))
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
 
 func (n *Notebook) file(paths ...string) ([]byte, error) {

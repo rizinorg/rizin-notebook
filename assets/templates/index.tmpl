@@ -10,6 +10,7 @@
         .spacing-top { margin: 3px 0px 0px 0px; }
         .spacing-left { margin: 0px 3px 0px 0px; }
         .align-center { text-align: center; }
+        .pipe { color: #e85600; border-color: #e85600; }
     </style>
 </head>
 <body>
@@ -32,10 +33,16 @@
                     {{ else }}{{ range $i, $page := .list }}
                     <div class="input-group spacing-top">
                         <span class="input-group-addon spacing-left">{{ $page.title }}</span>
-                        <a class="btn btn-action spacing-left" href="{{ $root }}edit/{{ $page.nonce }}">
+                        {{ if $page.pipe }}
+                        <a class="btn pipe disabled spacing-left" href="#">
+                            <i class="icon icon-more-horiz">Pipe Open</i>
+                        </a>
+                        {{ else }}
+                        <a class="btn spacing-left" href="{{ $root }}edit/{{ $page.nonce }}">
                             <i class="icon icon-edit">Edit</i>
                         </a>
-                        <a class="btn btn-action spacing-left" href="{{ $root }}open/{{ $page.nonce }}">
+                        {{ end }}
+                        <a class="btn spacing-left" href="{{ $root }}view/{{ $page.nonce }}">
                             <i class="icon icon-forward">View</i>
                         </a>
                     </div>
