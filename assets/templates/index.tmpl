@@ -32,6 +32,9 @@
                     {{ else }}{{ range $i, $page := .list }}
                     <div class="input-group spacing-top">
                         <span class="input-group-addon spacing-left">{{ $page.title }}</span>
+                        <a class="btn btn-action spacing-left" href="{{ $root }}edit/{{ $page.nonce }}">
+                            <i class="icon icon-edit">Edit</i>
+                        </a>
                         <a class="btn btn-action spacing-left" href="{{ $root }}open/{{ $page.nonce }}">
                             <i class="icon icon-forward">View</i>
                         </a>

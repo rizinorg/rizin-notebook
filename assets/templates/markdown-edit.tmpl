@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Rizin Notebook</title>
+    <link rel="stylesheet" href="{{ .root }}static/spectre-icons.min.css">
+    <link rel="stylesheet" href="{{ .root }}static/spectre.min.css">
+    <link rel="stylesheet" href="{{ .root }}static/simplemde.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+        html, body { width: 100%; height: 100%; margin: 0 }
+        .position-right { position: absolute; right: 0px; z-index: 99999; }
+        .button-edit { width: 75px ! important; margin-top: 9px; margin-right: 9px; }
+    </style>
+</head>
+<body onload="editor()">
+    <div style="margin-top: 15px; height: 100%;">
+        <form action="{{ .root }}markdown/save{{ .path }}" method="POST">
+            <div class="position-right">
+                <button class="btn btn-action button-edit" type="submit"><i class="icon icon-share">Code</i> Save</button>
+                <a class="btn btn-action button-edit" href="{{ .root }}markdown/delete{{ .path }}"><i class="icon icon-cross">Code</i> Delete</a>
+                <a class="btn btn-action button-edit" href="{{ .root }}markdown/view{{ .path }}"><i class="icon icon-edit">Code</i> Cancel</a>
+            </div>
+            <div class="form-group">
+                <textarea class="form-input" id="input-body" name="markdown" placeholder="Content" cols="80" rows="24">{{printf "%s" .raw}}</textarea>
+            </div>
+        </form>
+    </div>
+    <script src="{{ .root }}static/simplemde.min.js"></script>
+    <script>
+    function editor() {
+      var simplemde = new SimpleMDE({
+          element: document.getElementById("input-body"),
+          autofocus: true,
+          hideIcons: ["side-by-side", "fullscreen", "guide"],
+          autosave: { enabled: false },
+          forceSync: true,
+          indentWithTabs: false,
+          promptURLs: true,
+          tabSize: 4,
+      });
+    };
+    </script>
+</body>
+</html>

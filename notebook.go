@@ -24,6 +24,37 @@ func readJson(filepath string) gin.H {
 	return data
 }
 
+func sanitizeLines(lines []interface{}) []interface{} {
+	for i, v := range lines {
+		n := gin.H{}
+		p := v.(map[string]interface{})
+		for k, _ := range p {
+			n[k] = p[k]
+		}
+		lines[i] = n
+	}
+	return lines
+}
+
+func findLineByKey(lines []interface{}, key, enonce string) int {
+	for i, n := range lines {
+		p := n.(gin.H)
+		if v, ok := p[key]; ok && enonce == v {
+			return i
+		}
+	}
+	return -1
+}
+
+func findNonce(a []string, b string) int {
+	for i, n := range a {
+		if n == b {
+			return i
+		}
+	}
+	return -1
+}
+
 type Notebook struct {
 	mutex   sync.Mutex
 	pages   gin.H
@@ -43,6 +74,7 @@ func NewNotebook(storage string) *Notebook {
 	}
 	for _, file := range files {
 		page := readJson(file)
+		page["lines"] = sanitizeLines(page["lines"].([]interface{}))
 		nonce := strings.TrimSuffix(strings.TrimPrefix(file, prefix), suffix)
 		page["nonce"] = nonce
 		pages[nonce] = page
@@ -68,6 +100,9 @@ func (n *Notebook) list() []gin.H {
 }
 
 func (n *Notebook) get(nonce string) gin.H {
+	if len(nonce) != PAGE_NONCE_SIZE {
+		return nil
+	}
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 	if page, ok := n.pages[nonce]; ok {
@@ -76,31 +111,89 @@ func (n *Notebook) get(nonce string) gin.H {
 	return nil
 }
 
-func (n *Notebook) save(nonce string) bool {
+func (n *Notebook) newmd(nonce string) string {
+	if len(nonce) != PAGE_NONCE_SIZE {
+		return ""
+	}
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 	if data, ok := n.pages[nonce]; ok {
+		page := data.(gin.H)
+		var enonce = Nonce(ELEMENT_NONCE_SIZE)
+		for {
+			if _, err := n.file(nonce, enonce+".md"); err != nil {
+				break
+			}
+			enonce = Nonce(ELEMENT_NONCE_SIZE)
+		}
+		if !n.save([]byte{}, nonce, enonce+".md") {
+			return ""
+		}
+		page["lines"] = append(page["lines"].([]interface{}), gin.H{
+			"type":  "markdown",
+			"nonce": enonce,
+		})
 		filepath := path.Join(n.storage, nonce, PAGE_FILE)
-		bytes, _ := json.MarshalIndent(data, "", "\t")
-		return ioutil.WriteFile(filepath, bytes, 0644) == nil
+		bytes, _ := json.MarshalIndent(page, "", "\t")
+		if ioutil.WriteFile(filepath, bytes, 0644) == nil {
+			n.pages[nonce] = page
+			return enonce
+		}
+	}
+	return ""
+}
+
+func (n *Notebook) deleteElem(nonce, enonce string, markdown bool) bool {
+	if len(nonce) != PAGE_NONCE_SIZE || len(enonce) != ELEMENT_NONCE_SIZE {
+		return false
+	}
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if data, ok := n.pages[nonce]; ok {
+		key := "nonce"
+		suffix := ".md"
+		if !markdown {
+			key = "output"
+			suffix = ".out"
+		}
+		page := data.(gin.H)
+		if os.Remove(path.Join(n.storage, nonce, enonce+suffix)) != nil {
+			return false
+		}
+
+		lines := page["lines"].([]interface{})
+		if idx := findLineByKey(lines, key, enonce); idx > -1 {
+			page["lines"] = append(lines[:idx], lines[idx+1:]...)
+		}
+
+		filepath := path.Join(n.storage, nonce, PAGE_FILE)
+		bytes, _ := json.MarshalIndent(page, "", "\t")
+		if ioutil.WriteFile(filepath, bytes, 0644) == nil {
+			n.pages[nonce] = page
+			return true
+		}
 	}
 	return false
 }
 
-func (n *Notebook) new() string {
+func (n *Notebook) new(title string) string {
+	if len(title) < 1 {
+		return ""
+	}
+
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
-	var nonce = Nonce(NONCE_SIZE)
+	var nonce = Nonce(PAGE_NONCE_SIZE)
 	for {
 		if _, ok := n.pages[nonce]; !ok {
 			break
 		}
-		nonce = Nonce(NONCE_SIZE)
+		nonce = Nonce(PAGE_NONCE_SIZE)
 	}
 	data := gin.H{
-		"title": "untitled page",
+		"title": title,
 		"nonce": nonce,
-		"lines": []string{},
+		"lines": []interface{}{},
 	}
 	if err := os.MkdirAll(path.Join(n.storage, nonce), os.ModePerm); err != nil {
 		return ""
@@ -111,11 +204,57 @@ func (n *Notebook) new() string {
 		return ""
 	}
 	n.pages[nonce] = data
+	n.nonces = append(n.nonces, nonce)
+	sort.Strings(n.nonces)
 	return nonce
+}
+
+func (n *Notebook) rename(nonce, title string) bool {
+	if len(title) < 1 || len(nonce) != PAGE_NONCE_SIZE {
+		return false
+	}
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if data, ok := n.pages[nonce]; ok {
+		page := data.(gin.H)
+		page["title"] = title
+		filepath := path.Join(n.storage, nonce, PAGE_FILE)
+		bytes, _ := json.MarshalIndent(page, "", "\t")
+		if ioutil.WriteFile(filepath, bytes, 0644) == nil {
+			n.pages[nonce] = page
+			return true
+		}
+	}
+	return false
+}
+
+func (n *Notebook) delete(nonce string) bool {
+	if len(nonce) != PAGE_NONCE_SIZE {
+		return false
+	}
+	if _, ok := n.pages[nonce]; !ok {
+		return false
+	}
+
+	filepath := path.Join(n.storage, nonce)
+	if os.RemoveAll(filepath) == nil {
+		delete(n.pages, nonce)
+		idx := findNonce(n.nonces, nonce)
+		n.nonces = append(n.nonces[:idx], n.nonces[idx+1:]...)
+		return true
+	}
+	return false
 }
 
 func (n *Notebook) file(paths ...string) ([]byte, error) {
 	args := append([]string{n.storage}, paths...)
 	filepath := path.Join(args...)
 	return ioutil.ReadFile(filepath)
+}
+
+func (n *Notebook) save(bytes []byte, paths ...string) bool {
+	args := append([]string{n.storage}, paths...)
+	filepath := path.Join(args...)
+	return ioutil.WriteFile(filepath, bytes, 0644) == nil
 }

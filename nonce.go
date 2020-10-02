@@ -4,7 +4,8 @@ import (
 	"crypto/rand"
 )
 
-const NONCE_SIZE = 32
+const ELEMENT_NONCE_SIZE = 8
+const PAGE_NONCE_SIZE = 32
 
 func Nonce(n int) string {
 	const encoding = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
