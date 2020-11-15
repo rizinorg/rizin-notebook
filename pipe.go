@@ -10,14 +10,23 @@ import (
 )
 
 type Rizin struct {
-	pipe   *exec.Cmd
-	stdin  io.WriteCloser
-	stdout io.ReadCloser
-	mutex  sync.Mutex
+	pipe    *exec.Cmd
+	stdin   io.WriteCloser
+	stdout  io.ReadCloser
+	mutex   sync.Mutex
+	project string
 }
 
-func NewRizin(file string) *Rizin {
-	pipe := exec.Command("radare2", "-2", "-e", "scr.color=0", "-A", file)
+func NewRizin(rizinbin, file, project string) *Rizin {
+	args := []string{
+		"-2",
+		"-e",
+		"scr.color=0",
+		"-p",
+		project,
+		file,
+	}
+	pipe := exec.Command(rizinbin, args...)
 
 	stdin, err := pipe.StdinPipe()
 	if err != nil {
@@ -36,7 +45,7 @@ func NewRizin(file string) *Rizin {
 		return nil
 	}
 
-	rizin := &Rizin{pipe: pipe, stdin: stdin, stdout: stdout}
+	rizin := &Rizin{pipe: pipe, stdin: stdin, stdout: stdout, project: project}
 
 	go func(r *Rizin) {
 		r.mutex.Lock()
@@ -73,5 +82,6 @@ func (r *Rizin) exec(cmd string) (string, error) {
 }
 
 func (r *Rizin) close() {
+	r.exec("Ps " + r.project)
 	r.exec("q!")
 }

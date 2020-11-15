@@ -5,10 +5,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/russross/blackfriday.v2"
 	"html/template"
+	"io/ioutil"
+	"net/http"
 	"path"
 	"path/filepath"
 	"strings"
 )
+
+var functionMap = template.FuncMap{
+	"raw": func(b []byte) template.HTML {
+		return template.HTML(b)
+	},
+}
 
 func sanitizeWebRoot(path string) string {
 	if len(path) < 2 {
@@ -19,25 +27,104 @@ func sanitizeWebRoot(path string) string {
 	return path
 }
 
-func server(webRoot, assets, bind string) {
-	var root *gin.RouterGroup
+func loadEmbedded() (*template.Template, error) {
+	t := template.New("")
+	for name, file := range Assets.Files {
+		if file.IsDir() || !strings.HasSuffix(name, ".tmpl") {
+			continue
+		}
+		h, err := ioutil.ReadAll(file)
+		if err != nil {
+			return nil, err
+		}
+		t, err = t.New(path.Base(name)).Funcs(functionMap).Parse(string(h))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return t, nil
+}
 
-	static := path.Join(assets, "static")
-	templates := path.Join(assets, "templates", "*")
+func loadAsset(file string) ([]byte, error) {
+	asset, err := Assets.Open("/assets/static/" + file)
+	if err != nil {
+		return nil, nil
+	}
+	content, err := ioutil.ReadAll(asset)
+	if err != nil {
+		return nil, err
+	}
+	return content, nil
+}
+
+func server(webRoot, assets, bind string, debug bool) {
+	var root *gin.RouterGroup
+	var static, templates string
+
+	gin.DisableConsoleColor()
+	if debug {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
 	router := gin.Default()
-	router.SetFuncMap(template.FuncMap{
-		"raw": func(b []byte) template.HTML {
-			return template.HTML(b)
-		},
-	})
-	router.LoadHTMLGlob(templates)
+
+	if len(assets) > 0 {
+		static = path.Join(assets, "static")
+		templates = path.Join(assets, "templates", "*")
+		router.SetFuncMap(functionMap)
+		router.LoadHTMLGlob(templates)
+	} else {
+		templates, err := loadEmbedded()
+		if err != nil {
+			panic(err)
+		}
+		router.SetHTMLTemplate(templates)
+	}
 
 	root = router.Group(sanitizeWebRoot(webRoot))
-	root.GET("/favicon.ico", func(c *gin.Context) {
-		c.Redirect(302, "/static/favicon.ico")
-	})
-	root.Static("/static", static)
+
+	if len(assets) > 0 {
+		root.GET("/favicon.ico", func(c *gin.Context) {
+			c.Redirect(302, "/static/favicon.ico")
+		})
+		root.Static("/static", static)
+	} else {
+		root.GET("/favicon.ico", func(c *gin.Context) {
+			content, err := loadAsset("favicon.ico")
+			if content == nil && err == nil {
+				c.Status(404)
+				return
+			} else if err != nil {
+				c.Status(500)
+				fmt.Println("[Assets]", err)
+				return
+			}
+			c.Data(200, "image/x-icon", content)
+		})
+		root.GET("/static/:file", func(c *gin.Context) {
+			file := c.Param("file")
+			content, err := loadAsset(file)
+			if content == nil && err == nil {
+				c.Status(404)
+				return
+			} else if err != nil {
+				c.Status(500)
+				fmt.Println("[Assets]", err)
+				return
+			}
+			var contentType = "text/plain"
+			if strings.HasSuffix(file, ".css") {
+				contentType = "text/css"
+			} else if strings.HasSuffix(file, ".js") {
+				contentType = "text/javascript"
+			} else {
+				contentType = http.DetectContentType(content)
+			}
+			c.Data(200, contentType, content)
+		})
+	}
 
 	{
 		root.GET("/", func(c *gin.Context) {

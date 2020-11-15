@@ -61,9 +61,10 @@ type Notebook struct {
 	nonces  []string
 	storage string
 	pipes   map[string]*Rizin
+	rizin   string
 }
 
-func NewNotebook(storage string) *Notebook {
+func NewNotebook(storage, rizinbin string) *Notebook {
 	pages := gin.H{}
 	nonces := []string{}
 	prefix := path.Join(storage) + string(os.PathSeparator)
@@ -82,7 +83,13 @@ func NewNotebook(storage string) *Notebook {
 		nonces = append(nonces, nonce)
 	}
 	sort.Strings(nonces)
-	return &Notebook{pages: pages, nonces: nonces, storage: storage, pipes: map[string]*Rizin{}}
+	return &Notebook{
+		pages:   pages,
+		nonces:  nonces,
+		storage: storage,
+		pipes:   map[string]*Rizin{},
+		rizin:   rizinbin,
+	}
 }
 
 func (n *Notebook) list() []gin.H {
@@ -293,8 +300,9 @@ func (n *Notebook) open(nonce string, open bool) *Rizin {
 	if p, ok := n.pages[nonce]; ok && open {
 		page := p.(gin.H)
 		filepath := path.Join(n.storage, nonce, page["binary"].(string))
+		prjpath := path.Join(n.storage, nonce, "project.rzdb")
 		// This should be async.
-		rizin := NewRizin(filepath)
+		rizin := NewRizin(n.rizin, filepath, prjpath)
 		if rizin == nil {
 			return nil
 		}
