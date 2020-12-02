@@ -110,6 +110,10 @@ func (n *Notebook) list() []gin.H {
 	return pages
 }
 
+func (n *Notebook) info() ([]string, error) {
+	return RizinInfo(n.rizin)
+}
+
 func (n *Notebook) get(nonce string) gin.H {
 	if len(nonce) != PAGE_NONCE_SIZE {
 		return nil

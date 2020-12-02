@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	notebook *Notebook
+	notebook  *Notebook // Notebook object
+	NBVERSION string    // Notebook version string
 )
 
 func usage() {
@@ -24,6 +25,10 @@ func main() {
 	var bind string
 	var rizinbin = "rizin"
 	var dataDir string = ".rizin-notebook"
+
+	if len(NBVERSION) < 1 {
+		NBVERSION = "unknown"
+	}
 
 	if loc := os.Getenv("RIZIN_PATH"); len(loc) > 1 {
 		rizinbin = loc
@@ -48,5 +53,5 @@ func main() {
 	fmt.Printf("Server data dir '%s'\n", dataDir)
 	notebook = NewNotebook(dataDir, rizinbin)
 
-	server(root, assets, bind, debug)
+	runServer(root, assets, bind, debug)
 }

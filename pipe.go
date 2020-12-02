@@ -17,6 +17,14 @@ type Rizin struct {
 	project string
 }
 
+func RizinInfo(rizinbin string) ([]string, error) {
+	out, err := exec.Command(rizinbin, "-version").Output()
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(string(out), "\n"), nil
+}
+
 func NewRizin(rizinbin, file, project string) *Rizin {
 	args := []string{
 		"-2",

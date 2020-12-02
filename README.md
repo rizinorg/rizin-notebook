@@ -13,5 +13,5 @@ go get -v github.com/gin-gonic/gin
 go get -v github.com/jessevdk/go-assets-builder
 
 go-assets-builder assets -o assets.go
-go build
+go build -ldflags "-X main.NBVERSION=$(git rev-list -1 HEAD)"
 ```

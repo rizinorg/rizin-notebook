@@ -11,6 +11,8 @@
         .spacing-left { margin: 0px 3px 0px 0px; }
         .align-center { text-align: center; }
         .pipe { color: #e85600; border-color: #e85600; }
+        .pipe:hover { background: #e85600; border-color: #e85600; }
+        .footer { position: absolute; bottom: 0px; padding: 5px; }
     </style>
 </head>
 <body>
@@ -21,6 +23,8 @@
                 <a href="{{ $root }}" class="navbar-brand mr-10">Rizin Notebook</a>
             </section>
             <section class="navbar-section">
+                <a href="{{ $root }}about" class="btn">About</a>
+                &nbsp;
                 <a href="{{ $root }}new" class="btn btn-primary">New Page</a>
             </section>
         </header>
@@ -35,9 +39,7 @@
                     <div class="input-group spacing-top">
                         <span class="input-group-addon spacing-left">{{ $page.title }}</span>
                         {{ if $page.pipe }}
-                        <a class="btn pipe disabled spacing-left" href="#">
-                            <i class="icon icon-more-horiz">Pipe Open</i>
-                        </a>
+                        <button class="btn tooltip tooltip-bottom pipe spacing-left" data-tooltip="The pipe is still open."><i class="icon icon-more-horiz"></i></button>
                         {{ else }}
                         <a class="btn spacing-left" href="{{ $root }}edit/{{ $page.nonce }}">
                             <i class="icon icon-edit">Edit</i>

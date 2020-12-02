@@ -13,6 +13,13 @@
         .icon-height { height: 20px; }
         iframe { border: 0px; width: 100%; height: 100% }
     </style>
+    <script type="text/javascript">
+      function confirm_delete(event) {
+        if (!window.confirm("Are you sure you want to delete it?")) {
+          event.preventDefault();
+        }
+      }
+    </script>
   </head>
 <body>
   <section class="container grid-960 mt-10">
@@ -42,7 +49,7 @@
               <button class="btn btn-primary" type="submit">{{ if lt $nlen 1 }}Create{{ else }}Save{{ end }}</button>
               <a class="btn" href="{{ $root }}">Cancel</a>
               {{ if gt $nlen 0 }}
-              <a class="btn float-right" href="{{ $root }}delete/{{ .nonce }}">Delete</a>
+              <a class="btn float-right" href="{{ $root }}delete/{{ .nonce }}" onclick="confirm_delete(event)">Delete</a>
               {{ end }}
             </div>
           </form>

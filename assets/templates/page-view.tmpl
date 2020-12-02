@@ -15,6 +15,7 @@
         .title-margin { margin-top: auto; margin-bottom: auto; margin-right: 10px; }
         .md-heigh { height: 64px; }
         .pipe { color: #e85600; border-color: #e85600; }
+        .pipe:hover { background: #e85600; border-color: #e85600; }
         iframe { border: 0px; width: 100%; height: 100% }
         .resizer { display: flex; margin: 0; padding: 0; resize: vertical; overflow: hidden }
         .resizer > .resized { flex-grow: 1; margin: 0; padding: 0; border: 0 }
@@ -82,13 +83,9 @@
       function syntax(elem, id) {
         console.log(elem, id);
       }
-      function run() {
-        hljs.initHighlightingOnLoad();
-        console.log(hljs.listLanguages());
-      }
     </script>
   </head>
-<body onload="run()">
+<body>
   <section class="container grid-960 mt-10">
     <header class="navbar navbar-fixed-height">
       <section class="navbar-section">
