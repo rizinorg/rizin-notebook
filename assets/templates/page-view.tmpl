@@ -18,8 +18,10 @@
         iframe { border: 0px; width: 100%; height: 100% }
         .resizer { display: flex; margin: 0; padding: 0; resize: vertical; overflow: hidden }
         .resizer > .resized { flex-grow: 1; margin: 0; padding: 0; border: 0 }
+        .syntax-menu { right: 35px; }
+        .align-right { text-align: right; }
     </style>
-        <script>
+    <script>
       function handle(obj) {
         obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
         if (obj.contentWindow.location.href.indexOf("/deleted") > 0) {
@@ -72,12 +74,25 @@
         div.appendChild(iframe);
         body.insertBefore(div, body.childNodes[body.childNodes.length - 2]);
       }
+      function confirm_delete(event) {
+        if (!window.confirm("Are you sure you want to delete the section?")) {
+          event.preventDefault();
+        }
+      }
+      function syntax(elem, id) {
+        console.log(elem, id);
+      }
+      function run() {
+        hljs.initHighlightingOnLoad();
+        console.log(hljs.listLanguages());
+      }
     </script>
   </head>
-<body>
+<body onload="run()">
   <section class="container grid-960 mt-10">
     <header class="navbar navbar-fixed-height">
       <section class="navbar-section">
+        <img src="{{ $root }}static/logo.png" width="30" height="30" />&nbsp;
         <a href="{{ $root }}" class="navbar-brand mr-10">Rizin Notebook</a>
       </section>
       <section class="navbar-section">
@@ -104,12 +119,12 @@
         {{ else }}
           <div class="input-group spacing-top">
             <code class="input-group-addon spacing-right spacing-left">{{ $line.command }}</code>
-            <a class="btn float-right" href="{{ $root }}output/delete/{{ $page.nonce }}/{{ $line.nonce }}">
+            <a class="btn float-right" href="{{ $root }}output/delete/{{ $page.nonce }}/{{ $line.nonce }}" onclick="confirm_delete(event)">
               <i class="icon icon-delete icon-height">Delete</i>
             </a>
           </div>
           <div class="input-group spacing-top">
-            <iframe frameborder="0" marginheight="0" marginwidth="0" width="100%" height="100%" scrolling="no" onload="handle(this)" class="input-group-addon spacing-left md-heigh" src="{{ $root }}output/view/{{ $page.nonce }}/{{ $line.nonce }}"></iframe>
+            <iframe id="output-{{ $i }}" frameborder="0" marginheight="0" marginwidth="0" width="100%" height="100%" scrolling="no" onload="handle(this)" class="input-group-addon spacing-left md-heigh" src="{{ $root }}output/view/{{ $page.nonce }}/{{ $line.nonce }}"></iframe>
           </div>
         {{ end }}
       {{ end }}

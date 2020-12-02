@@ -71,6 +71,7 @@ func server(webRoot, assets, bind string, debug bool) {
 	router := gin.Default()
 
 	if len(assets) > 0 {
+		fmt.Println("debugging assets.")
 		static = path.Join(assets, "static")
 		templates = path.Join(assets, "templates", "*")
 		router.SetFuncMap(functionMap)
