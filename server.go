@@ -435,7 +435,7 @@ func runServer(webRoot, assets, bind string, debug bool) {
 
 			go func(nonce, enonce, command string, rizin *Rizin) {
 				output, err := rizin.exec(command)
-				if len(output) < 1 && err == nil {
+				if len(strings.TrimSpace(output)) < 1 && err == nil {
 					output = "no output from rizin."
 				} else if err != nil {
 					output = fmt.Sprintf("pipe error: %v", err)

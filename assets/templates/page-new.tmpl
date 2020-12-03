@@ -19,6 +19,17 @@
           event.preventDefault();
         }
       }
+      function verify(event) {
+        var title = document.getElementById('title').value.trim().length;
+        var files = document.getElementById('binary').files.length;
+        if (title < 1) {
+          alert("Title field is empty. Please add one.");
+          event.preventDefault();
+        } else if (files < 1) {
+          alert("You forgot to select a file to analyze. Please select one.");
+          event.preventDefault();
+        }
+      }
     </script>
   </head>
 <body>
@@ -35,10 +46,10 @@
     <section class="container">
       <div class="columns">
         <div class="column">
-          <form action="{{ $root }}edit" method="POST" enctype="multipart/form-data">
+          <form action="{{ $root }}edit" method="POST" enctype="multipart/form-data" onsubmit="verify(event)">
             <div class="form-group">
               <input type="hidden" name="nonce" value="{{ .nonce }}" />
-              <input type="text" class="form-input" name="title" value="{{ .title }}" placeholder="Notebook page title"/>
+              <input type="text" class="form-input" name="title" id="title" value="{{ .title }}" placeholder="Notebook page title"/>
               {{ if lt $nlen 1 }}
               <br>
               <label for="binary">Choose a binary to open: </label>
