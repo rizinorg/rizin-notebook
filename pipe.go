@@ -28,8 +28,11 @@ func RizinInfo(rizinbin string) ([]string, error) {
 func NewRizin(rizinbin, file, project string) *Rizin {
 	args := []string{
 		"-2",
+		"-0",
 		"-e",
 		"scr.color=0",
+		"-e",
+		"scr.interactive=false",
 		"-p",
 		project,
 		file,
@@ -77,15 +80,7 @@ func (r *Rizin) exec(cmd string) (string, error) {
 		fmt.Println("pipe error:", err)
 		return "", err
 	}
-	idx := strings.Index(buf, cmd+"\x1b")
-	if idx > -1 {
-		tmp := buf[idx+len(cmd)+4:]
-		idx = strings.Index(tmp, "\x1b")
-		if idx > -1 {
-			return strings.Trim(tmp[:idx], "\n"), nil
-		}
-		return strings.Trim(tmp, "\n"), nil
-	}
+	buf = strings.TrimSuffix(buf, "\x00")
 	return strings.Trim(buf, "\n"), nil
 }
 
