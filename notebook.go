@@ -200,9 +200,7 @@ func (n *Notebook) deleteElem(nonce, enonce string, markdown bool) bool {
 			suffix = ".out"
 		}
 		page := data.(gin.H)
-		if os.Remove(path.Join(n.storage, nonce, enonce+suffix)) != nil {
-			return false
-		}
+		os.Remove(path.Join(n.storage, nonce, enonce+suffix))
 
 		lines := page["lines"].([]interface{})
 		if idx := findLineByKey(lines, "nonce", enonce); idx > -1 {
