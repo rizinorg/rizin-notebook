@@ -16,10 +16,26 @@ const (
 	KB_PAGE     = "Page"
 )
 
+type KBindings map[string]map[string]string
+
 type NotebookConfig struct {
 	Environment map[string]string `json:"environment"`
+	KeyBindings KBindings         `json:"keybindings"`
 	filename    string
 	mutex       sync.Mutex
+}
+
+var availableKeyBindings = KBindings{
+	KB_INDEX: {
+		"New Page": "Control,N",
+		"About":    "Control,H",
+		"Settings": "Control,S",
+	},
+	KB_PAGE: {
+		"Open/Close Pipe": "Control,O",
+		"New Markdown":    "Control,M",
+		"Execute Command": "Control,E",
+	},
 }
 
 func getValue(kmap map[string]string, action, defkey string) string {
@@ -32,6 +48,19 @@ func getValue(kmap map[string]string, action, defkey string) string {
 	return defkey
 }
 
+func sanitizeKeyBindings(keyBindings KBindings) KBindings {
+	sanitized := KBindings{}
+	for section, kb := range availableKeyBindings {
+		msection := map[string]string{}
+		fsection := keyBindings[section]
+		for action, key := range kb {
+			msection[action] = getValue(fsection, action, key)
+		}
+		sanitized[section] = msection
+	}
+	return sanitized
+}
+
 func NewNotebookConfig(folder string) *NotebookConfig {
 	var config = &NotebookConfig{}
 	config.filename = path.Join(folder, CONFIG_FILE)
@@ -41,6 +70,12 @@ func NewNotebookConfig(folder string) *NotebookConfig {
 	}
 	if config.Environment == nil {
 		config.Environment = map[string]string{}
+	}
+	if config.KeyBindings == nil {
+		config.KeyBindings = availableKeyBindings
+		config.Save()
+	} else {
+		config.KeyBindings = sanitizeKeyBindings(config.KeyBindings)
 	}
 
 	if value, ok := config.Environment["RIZIN_PATH"]; !ok || len(value) < 1 {
@@ -72,6 +107,21 @@ func (nc *NotebookConfig) SetEnvironment(key, value string) {
 	key = strings.TrimSpace(key)
 	os.Setenv(key, value)
 	nc.Environment[key] = value
+}
+
+func (nc *NotebookConfig) SetKeyBindings(section, key, value string) bool {
+	nc.mutex.Lock()
+	defer nc.mutex.Unlock()
+	value = strings.TrimSpace(value)
+	key = strings.TrimSpace(key)
+	if _, ok := nc.KeyBindings[section]; !ok {
+		return false
+	}
+	if _, ok := nc.KeyBindings[section][key]; !ok {
+		return false
+	}
+	nc.KeyBindings[section][key] = value
+	return true
 }
 
 func (nc *NotebookConfig) Save() {
