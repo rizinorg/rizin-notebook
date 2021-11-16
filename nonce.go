@@ -21,6 +21,6 @@ func Nonce(n int) string {
 	return string(bytes)
 }
 
-func IsValidNonce(nonce string) bool {
+func IsValidNonce(unique string) bool {
 	return true
 }

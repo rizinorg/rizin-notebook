@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	notebook  *Notebook // Notebook object
-	NBVERSION string    // Notebook version string
+	NBVERSION string // Notebook version string
+	webroot   string
+	notebook  *Notebook       // Notebook object
+	config    *NotebookConfig // NotebookConfig object
 )
 
 func usage() {
@@ -20,7 +22,6 @@ func usage() {
 func main() {
 
 	var debug bool
-	var root string
 	var assets string
 	var bind string
 	var rizinbin = "rizin"
@@ -30,16 +31,19 @@ func main() {
 		NBVERSION = "unknown"
 	}
 
-	if loc := os.Getenv("RIZIN_PATH"); len(loc) > 1 {
-		rizinbin = loc
-	}
-
 	if homedir, err := os.UserHomeDir(); err == nil {
 		dataDir = path.Join(homedir, ".rizin-notebook")
 	}
 
+	config = NewNotebookConfig(dataDir)
+	config.UpdateEnvironment()
+
+	if loc := os.Getenv("RIZIN_PATH"); len(loc) > 1 {
+		rizinbin = loc
+	}
+
 	flag.StringVar(&bind, "bind", "127.0.0.1:8000", "[address]:[port] address to bind to.")
-	flag.StringVar(&root, "root", "/", "defines where the web root of the application is.")
+	flag.StringVar(&webroot, "root", "/", "defines where the web root of the application is.")
 	flag.StringVar(&dataDir, "notebook", ""+dataDir, "defines where the notebook folder is located.")
 	flag.StringVar(&assets, "debug-assets", "", "allows you to debug the assets (-debug-assets /path/to/assets).")
 	flag.BoolVar(&debug, "debug", false, "enable http debug logs.")
@@ -53,5 +57,5 @@ func main() {
 	fmt.Printf("Server data dir '%s'\n", dataDir)
 	notebook = NewNotebook(dataDir, rizinbin)
 
-	runServer(root, assets, bind, debug)
+	runServer(assets, bind, debug)
 }

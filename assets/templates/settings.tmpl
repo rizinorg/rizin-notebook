@@ -1,0 +1,76 @@
+{{ $root := .root }}<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Rizin Notebook</title>
+    <link rel="stylesheet" href="{{ $root }}static/spectre-icons.min.css">
+    <link rel="stylesheet" href="{{ $root }}static/spectre.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+        .spacing-top { margin: 3px 0px 0px 0px; }
+        .spacing-left { margin: 0px 3px 0px 0px; }
+        .height-32px { height: 32px; }
+        .align-center { text-align: center; }
+        .pipe { color: #e85600; border-color: #e85600; }
+        .pipe:hover { background: #e85600; border-color: #e85600; }
+        .detail-size { width: 200px; }
+        .background-white { background: white; }
+        .spacer-12px { width: 12px; display: inline-block; }
+        .col-btn { width: 3.333%; }
+    </style>
+    <script type="text/javascript">
+      function keycombo(elem, keys) {
+        keys = keys.split(',');
+        if (keys.length === 1 && keys[0].length < 1) {
+          keys = [];
+        }
+        elem.textContent = keys.length > 0 ? keys.join(' + ') : "Not Assigned";
+      }
+    </script>
+</head>
+<body>
+    <section class="container grid-960 mt-10">
+        <header class="navbar">
+            <section class="navbar-section">
+                <img src="{{ $root }}static/logo.png" width="30" height="30" />&nbsp;
+                <a href="{{ $root }}" class="navbar-brand mr-10">Rizin Notebook</a>
+            </section>
+            <section class="navbar-section">
+                <a href="{{ $root }}" class="btn btn-primary">Go Back</a>
+            </section>
+        </header>
+        <section class="container">
+            <p>
+                
+                <h3 class="s-title">Environment Variables</h3>
+                <div class="columns col-gapless">
+                    <div class="column col-1 col-btn spacing-left">
+{{ range $envkey, $env := .environment }}
+                        <a class="btn spacing-top" href="{{ $root }}settings/environment/edit/{{ $envkey }}">
+                            <i class="icon icon-edit">Edit</i>
+                        </a>
+{{ end }}
+                    </div>
+                    <div class="column col-3 spacing-left">
+{{ range $envkey, $env := .environment }}
+                        <div class="input-group">
+                            <span class="input-group-addon detail-size spacing-top height-32px">{{ $envkey }}</span>
+                        </div>
+{{ end }}
+                    </div>
+                    <div class="column col-8">
+{{ range $envkey, $env := .environment }}
+                        <div class="input-group spacing-left">
+                            <span class="input-group-addon height-32px spacing-top">{{ $env }}</span>
+                        </div>
+{{ end }}
+                    </div>
+                </div>
+                <a class="btn" href="{{ $root }}settings/environment/edit/new">
+                    New Environment Variable
+                </a>
+            </p>
+        </section>
+    </section>
+</body>
+</html>
