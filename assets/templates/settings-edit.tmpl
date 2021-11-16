@@ -29,10 +29,42 @@
           event.preventDefault();
         }
       }
+{{ else }}
+      function confirm_default(event) {
+        if (!window.confirm("Are you sure you want to restore to the default value?")) {
+          event.preventDefault();
+        }
+      }
+      function update_pressed_key(event) {
+        event.preventDefault();
+        var keys = [];
+        if (event.ctrlKey) {
+          keys.push("Control");
+        }
+        if (event.shiftKey) {
+          keys.push("Shift");
+        }
+        if (['control', 'shift'].indexOf(event.key.toLowerCase()) < 0) {
+          keys.push(event.key.toUpperCase());
+        }
+        document.getElementById('value').value = keys.join(',');
+        document.getElementById('value-human-readable').textContent = keys.join(' + ');
+      }
+      function set_onkeypress(elem) {
+        event.preventDefault();
+        if (document.body.onkeydown) {
+          document.body.onkeydown = null;
+          elem.textContent = "Edit";
+        } else {
+          elem.textContent = "Accept";
+          document.body.onkeydown = update_pressed_key;
+        }
+        elem.disabled = false;
+      }
 {{ end }}
     </script>
   </head>
-<body>
+<body{{ if eq .action "keybindings" }} onload="init()"{{ end }}>
   <section class="container grid-960 mt-10">
     <header class="navbar navbar-fixed-height">
       <section class="navbar-section">
@@ -56,6 +88,36 @@
               <input type="text" class="form-input" name="key" id="key" value="{{ .editkey }}" placeholder="Environment Variable Name"/>
               <label class="form-label" for="value">Value</label>
               <input type="text" class="form-input" name="value" id="value" value="{{ if gt $eklen 0 }}{{ index .data .editkey }}{{ end }}" placeholder="Insert a variable value (or leave it empty)"/>
+              {{ else }}{{ $value := index .data .editkey }}
+              <input type="hidden" name="value" id="value" value="{{ $value }}"/>
+              <input type="hidden" name="section" value="{{ .section }}" />
+              <input type="hidden" name="key" id="key" value="{{ .editkey }}"/>
+
+              <div class="columns col-gapless">
+                <div class="column col-3 spacing-left">
+                  <div class="input-group">
+                    <span class="input-group-addon detail-size spacing-top height-32px">Section</span>
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-addon detail-size spacing-top height-32px">Key Function</span>
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-addon detail-size spacing-top height-32px">Key Binding</span>
+                  </div>
+                </div>
+                <div class="column col-8">
+                  <div class="input-group spacing-left">
+                    <span class="input-group-addon detail-size spacing-top height-32px">{{ .section }}</span>
+                  </div>
+                  <div class="input-group">
+                    <span class="input-group-addon detail-size spacing-top height-32px">{{ .editkey }}</span>
+                  </div>
+                  <div class="input-group ">
+                    <span class="input-group-addon detail-size spacing-top height-32px" style="width: 250px;" id="value-human-readable">{{ keycombo $value }}</span>
+                    <button class="btn btn-primary spacing-top height-32px" style="width: 100px; padding-right: 3px" onclick="set_onkeypress(this)">Edit</button>
+                  </div>
+                </div>
+              </div>
               {{ end }}
             </div>
             <div class="form-group">

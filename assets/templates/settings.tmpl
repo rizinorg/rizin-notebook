@@ -70,6 +70,35 @@
                     New Environment Variable
                 </a>
             </p>
+            <p>
+                <h3 class="s-title">KeyBindings</h3>
+{{ range $section, $map := .keybindings }}
+                <h5 class="s-title" style="margin-bottom: 0px;">{{ $section }}</h5>
+                <div class="columns col-gapless">
+                    <div class="column col-1 col-btn spacing-left">
+{{ range $name, $keynum := $map }}
+                        <a class="btn spacing-top" href="{{ $root }}settings/keybindings/{{ $section }}/{{ $name }}">
+                            <i class="icon icon-edit">Edit</i>
+                        </a>
+{{ end }}
+                    </div>
+                    <div class="column col-3 spacing-left">
+{{ range $name, $keynum := $map }}
+                        <div class="input-group">
+                            <span class="input-group-addon detail-size spacing-top height-32px">{{ $name }}</span>
+                        </div>
+{{ end }}
+                    </div>
+                    <div class="column col-8">
+{{ range $name, $keynum := $map }}
+                        <div class="input-group spacing-left">
+                            <span class="input-group-addon height-32px spacing-top">{{ keycombo $keynum }}</span>
+                        </div>
+{{ end }}
+                    </div>
+                </div>
+{{ end }}
+            </p>
         </section>
     </section>
 </body>
