@@ -1,0 +1,80 @@
+{{ $root := .root }}{{ $eklen := len .editkey }}<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Rizin Notebook</title>
+    <link rel="stylesheet" href="{{ $root }}static/spectre-icons.min.css">
+    <link rel="stylesheet" href="{{ $root }}static/spectre.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+        .spacing-top { margin: 3px 0px 0px 0px; }
+        .spacing-left { margin: 0px 3px 0px 0px; }
+        .navbar-fixed-height { height: 32px; }
+        .inline { display: inline; }
+        .icon-height { height: 20px; }
+        iframe { border: 0px; width: 100%; height: 100% }
+    </style>
+    <script type="text/javascript">
+{{ if eq .action "environment" }}
+      function confirm_delete(event) {
+        if (!window.confirm("Are you sure you want to delete it?")) {
+          event.preventDefault();
+        }
+        document.getElementById('subaction').value = "delete";
+      }
+      function verify(event) {
+        var key = document.getElementById('key').value.trim().length;
+        if (key < 1) {
+          alert("Environment Variable Name field is empty.");
+          event.preventDefault();
+        }
+      }
+{{ end }}
+    </script>
+  </head>
+<body>
+  <section class="container grid-960 mt-10">
+    <header class="navbar navbar-fixed-height">
+      <section class="navbar-section">
+        <img src="{{ $root }}static/logo.png" width="30" height="30" />&nbsp;
+        <a href="{{ $root }}" class="navbar-brand mr-10">Rizin Notebook</a>
+      </section>
+      <section class="navbar-section">
+        Edit Settings
+      </section>
+    </header>
+    <section class="container">
+      <div class="columns">
+        <div class="column">
+          <form action="{{ $root }}settings" method="POST" enctype="multipart/form-data" onsubmit="verify(event)">
+            <div class="form-group">
+              <input type="hidden" name="action" value="{{ .action }}" />
+              {{ if eq .action "environment" }}
+              <input type="hidden" name="editkey" value="{{ .editkey }}" />
+              <input type="hidden" name="subaction" id="subaction" value="{{ if eq $eklen 0 }}new{{ else }}edit{{ end }}" />
+              <label class="form-label" for="key">Environment Variable Name</label>
+              <input type="text" class="form-input" name="key" id="key" value="{{ .editkey }}" placeholder="Environment Variable Name"/>
+              <label class="form-label" for="value">Value</label>
+              <input type="text" class="form-input" name="value" id="value" value="{{ if gt $eklen 0 }}{{ index .data .editkey }}{{ end }}" placeholder="Insert a variable value (or leave it empty)"/>
+              {{ end }}
+            </div>
+            <div class="form-group">
+              <button class="btn btn-primary" type="submit">{{ if lt $eklen 1 }}Create{{ else }}Save{{ end }}</button>
+              {{ if eq .action "environment" }}
+              {{ if gt $eklen 0 }}
+              <a class="btn" href="{{ $root }}settings">Cancel</a>
+              <button class="btn float-right" type="submit" onclick="confirm_delete(event)">Delete</button>
+              {{ else }}
+              <a class="btn" href="{{ $root }}settings">Cancel</a>
+              {{ end }}
+              {{ else }}
+              <button class="btn float-right" type="submit">Cancel</button>
+              {{ end }}
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </section>
+</body>
+</html>

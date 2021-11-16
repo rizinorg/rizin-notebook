@@ -30,9 +30,7 @@ func NewRizin(rizinbin, file, project string) *Rizin {
 		"-2",
 		"-0",
 		"-e",
-		"scr.color=0",
-		"-e",
-		"scr.interactive=false",
+		"scr.color=3",
 		"-p",
 		project,
 		file,
@@ -60,10 +58,10 @@ func NewRizin(rizinbin, file, project string) *Rizin {
 
 	go func(r *Rizin) {
 		r.mutex.Lock()
-		defer r.mutex.Unlock()
 		if _, err := bufio.NewReader(r.stdout).ReadString('\x00'); err != nil {
 			fmt.Println("pipe error:", err)
 		}
+		r.mutex.Unlock()
 	}(rizin)
 	return rizin
 }
@@ -80,8 +78,7 @@ func (r *Rizin) exec(cmd string) (string, error) {
 		fmt.Println("pipe error:", err)
 		return "", err
 	}
-	buf = strings.TrimSuffix(buf, "\x00")
-	return strings.Trim(buf, "\n"), nil
+	return buf, nil
 }
 
 func (r *Rizin) close() {

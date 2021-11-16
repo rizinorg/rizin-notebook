@@ -9,15 +9,31 @@
   <style type="text/css">
       html, body { width: 100%; height: 100%; margin: 0 }
       .button-edit { float: right; width: 60px ! important; margin-top: 5px; }
-      .markdown-container { margin-top: 9px; white-space: pre; line-height: 0px; }
+      .markdown-container { margin-top: 9px; }
   </style>
 </head>
-<body>
+<body onload="view()">
   <a class="btn btn-action spacing-left button-edit" href="{{ .root }}markdown/edit{{ .path }}">
     <i class="icon icon-edit">Code</i> Edit
   </a>
-  <div class="markdown-container">
-{{ .html | raw}}
+  <div class="markdown-container" id="markdown-container" >
+    <textarea style="display: none;" name="md-container" id="md-container" cols="30" rows="10">{{ .html }}</textarea>
   </div>
+  <script src="{{ .root }}static/simplemde.min.js"></script>
+  <script>
+  function view() {
+    var smde = new SimpleMDE({
+        element: document.getElementById('md-container'),
+        autoDownloadFontAwesome: false,
+        spellChecker: false,
+        status: false,
+        indentWithTabs: false,
+        promptURLs: true,
+        tabSize: 4,
+    });
+    var md = smde.value();
+    document.getElementById('markdown-container').innerHTML = smde.markdown(md);
+  };
+  </script>
 </body>
 </html>

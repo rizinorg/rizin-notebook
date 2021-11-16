@@ -23,6 +23,8 @@
                 <a href="{{ $root }}" class="navbar-brand mr-10">Rizin Notebook</a>
             </section>
             <section class="navbar-section">
+                <a href="{{ $root }}settings" class="btn">Settings</a>
+                &nbsp;
                 <a href="{{ $root }}about" class="btn">About</a>
                 &nbsp;
                 <a href="{{ $root }}new" class="btn btn-primary">New Page</a>
@@ -41,11 +43,11 @@
                         {{ if $page.pipe }}
                         <button class="btn tooltip tooltip-bottom pipe spacing-left" data-tooltip="The pipe is still open."><i class="icon icon-more-horiz"></i></button>
                         {{ else }}
-                        <a class="btn spacing-left" href="{{ $root }}edit/{{ $page.nonce }}">
+                        <a class="btn spacing-left" href="{{ $root }}edit/{{ $page.unique }}">
                             <i class="icon icon-edit">Edit</i>
                         </a>
                         {{ end }}
-                        <a class="btn spacing-left" href="{{ $root }}view/{{ $page.nonce }}">
+                        <a class="btn spacing-left" href="{{ $root }}view/{{ $page.unique }}">
                             <i class="icon icon-forward">View</i>
                         </a>
                     </div>

@@ -24,10 +24,11 @@
     </style>
     <script>
       function handle(obj) {
-        obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
+        obj.style.height = (obj.contentWindow.document.documentElement.scrollHeight + 20) + 'px';
         if (obj.contentWindow.location.href.indexOf("/deleted") > 0) {
           obj.parentNode.parentNode.removeChild(obj.parentNode);
         }
+        window.scrollTo(0, document.body.scrollHeight);
       }
       function output(obj) {
         obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
@@ -36,6 +37,7 @@
         } else if (obj.contentWindow.location.href.indexOf("/loaded") > 0) {
           location.reload()
         }
+        window.scrollTo(0, document.body.scrollHeight);
       }
       function newmd() {
         var body = document.getElementById("page-body");
@@ -51,8 +53,7 @@
         iframe.setAttribute("height", "100%");
         iframe.setAttribute("scrolling", "no");
         iframe.setAttribute("onload", "handle(this)");
-        iframe.setAttribute("onload", "handle(this)");
-        iframe.src = "{{ $root }}markdown/new/{{ $page.nonce }}";
+        iframe.src = "{{ $root }}markdown/new/{{ $page.unique }}";
         div.appendChild(iframe);
         body.insertBefore(div, body.childNodes[body.childNodes.length - 2]);
       }
@@ -70,8 +71,7 @@
         iframe.setAttribute("height", "100%");
         iframe.setAttribute("scrolling", "no");
         iframe.setAttribute("onload", "output(this)");
-        iframe.setAttribute("onload", "output(this)");
-        iframe.src = "{{ $root }}output/input/{{ $page.nonce }}";
+        iframe.src = "{{ $root }}output/input/{{ $page.unique }}";
         div.appendChild(iframe);
         body.insertBefore(div, body.childNodes[body.childNodes.length - 2]);
       }
@@ -79,9 +79,6 @@
         if (!window.confirm("Are you sure you want to delete the section?")) {
           event.preventDefault();
         }
-      }
-      function syntax(elem, id) {
-        console.log(elem, id);
       }
     </script>
   </head>
@@ -95,7 +92,7 @@
       <section class="navbar-section">
         <h4 class="title-margin">{{ $page.title }}</h4>
         &nbsp;
-        <a href="{{ $root }}pipe/{{ if $pipe }}close{{ else }}open{{ end }}/{{ $page.nonce }}" class="btn{{ if $pipe }} pipe{{ end }}">
+        <a href="{{ $root }}pipe/{{ if $pipe }}close{{ else }}open{{ end }}/{{ $page.unique }}" class="btn{{ if $pipe }} pipe{{ end }}">
           {{ if $pipe }}Close Pipe{{ else }}Open Pipe{{ end }}
         </a>
         &nbsp;
@@ -104,33 +101,41 @@
     </header>
     <section class="container">
       <div class="columns">
-        <div class="column" id="page-body">
+        <div class="column">
           <div class="input-group spacing-top">
             <code class="input-group-addon spacing-right">File: {{ $page.filename }}</code>
           </div>
-      {{ range $i, $line := $page.lines }}
-        {{ if eq $line.type "markdown" }}
+        </div>
+      </div>
+    </section>
+  </section>
+  <section class="container mt-10">
+    <section class="container">
+      <div class="columns">
+        <div class="column" style="padding-top: 0px" id="page-body">
+{{ range $i, $line := $page.lines }}
+{{ if eq $line.type "markdown" }}
           <div class="panel spacing-top resizer">
-            <iframe frameborder="0" marginheight="0" marginwidth="0" width="100%" height="100%" scrolling="no" onload="handle(this)" onunload="handle(this)" class="panel-body no-borders md-heigh" src="{{ $root }}markdown/view/{{ $page.nonce }}/{{ $line.nonce }}"></iframe>
+            <iframe frameborder="0" marginheight="0" marginwidth="0" width="100%" height="100%" scrolling="no" onload="handle(this)" onunload="handle(this)" class="panel-body no-borders md-heigh" src="{{ $root }}markdown/view/{{ $page.unique }}/{{ $line.unique }}"></iframe>
           </div>
-        {{ else }}
+{{ else }}
           <div class="input-group spacing-top">
             <code class="input-group-addon spacing-right spacing-left">{{ $line.command }}</code>
-            <a class="btn float-right" href="{{ $root }}output/delete/{{ $page.nonce }}/{{ $line.nonce }}" onclick="confirm_delete(event)">
+            <a class="btn float-right" href="{{ $root }}output/delete/{{ $page.unique }}/{{ $line.unique }}" onclick="confirm_delete(event)">
               <i class="icon icon-delete icon-height">Delete</i>
             </a>
           </div>
           <div class="input-group spacing-top">
-            <iframe id="output-{{ $i }}" frameborder="0" marginheight="0" marginwidth="0" width="100%" height="100%" scrolling="no" onload="handle(this)" class="input-group-addon spacing-left md-heigh" src="{{ $root }}output/view/{{ $page.nonce }}/{{ $line.nonce }}"></iframe>
+            <iframe id="output-{{ $i }}" frameborder="0" marginheight="0" marginwidth="0" width="100%" height="100%" scrolling="no" onload="handle(this)" class="input-group-addon spacing-left md-heigh" src="{{ $root }}output/view/{{ $page.unique }}/{{ $line.unique }}"></iframe>
           </div>
-        {{ end }}
-      {{ end }}
+{{ end }}
+{{ end }}
           <div class="input-group spacing-top" style="margin-top: 10px;">
             <a class="btn" href="#" onclick="newmd()"><i class="icon icon-message">Markdown</i> Markdown</a>
-            {{ if $pipe }}
+{{ if $pipe }}
             &nbsp;
             <a class="btn" href="#" onclick="newcm()"><i class="icon icon-resize-horiz">Command Line</i> Command Line</a>
-            {{ end }}
+{{ end }}
           </div>
         </div>
       </div>

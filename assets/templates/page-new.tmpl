@@ -1,4 +1,4 @@
-{{ $root := .root }}{{ $page := .page }}{{ $nlen := len .nonce }}<!DOCTYPE html>
+{{ $root := .root }}{{ $page := .page }}{{ $nlen := len .unique }}<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -48,7 +48,7 @@
         <div class="column">
           <form action="{{ $root }}edit" method="POST" enctype="multipart/form-data" onsubmit="verify(event)">
             <div class="form-group">
-              <input type="hidden" name="nonce" value="{{ .nonce }}" />
+              <input type="hidden" name="unique" value="{{ .unique }}" />
               <input type="text" class="form-input" name="title" id="title" value="{{ .title }}" placeholder="Notebook page title"/>
               {{ if lt $nlen 1 }}
               <br>
@@ -60,7 +60,7 @@
               <button class="btn btn-primary" type="submit">{{ if lt $nlen 1 }}Create{{ else }}Save{{ end }}</button>
               <a class="btn" href="{{ $root }}">Cancel</a>
               {{ if gt $nlen 0 }}
-              <a class="btn float-right" href="{{ $root }}delete/{{ .nonce }}" onclick="confirm_delete(event)">Delete</a>
+              <a class="btn float-right" href="{{ $root }}delete/{{ .unique }}" onclick="confirm_delete(event)">Delete</a>
               {{ end }}
             </div>
           </form>
