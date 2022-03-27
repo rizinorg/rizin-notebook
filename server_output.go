@@ -13,6 +13,39 @@ func serverAddOutput(output *gin.RouterGroup) {
 	output.GET("/loaded", func(c *gin.Context) {
 		c.String(200, "found.")
 	})
+	output.POST("/script/:unique", func(c *gin.Context) {
+		unique := c.Param("unique")
+		script := c.DefaultPostForm("script", "")
+		if !IsValidNonce(unique) || len(script) < 1 {
+			c.HTML(400, "console-error.tmpl", gin.H{
+				"error": "invalid request",
+				"root":  webroot,
+			})
+			return
+		}
+
+		section := notebook.newscript(unique, script)
+		if len(section) < 1 {
+			c.HTML(400, "console-error.tmpl", gin.H{
+				"error": "cannot create section for output.",
+				"root":  webroot,
+			})
+			return
+		}
+
+		rizin := notebook.open(unique, false)
+		jsvm := notebook.jsvm
+		go func(unique, name, script string, jsvm *JavaScript, rizin *Rizin) {
+			output, err := jsvm.exec(script, rizin)
+			if err != nil {
+				errstr := strings.Replace(err.Error(), " at main.NewJavaScript.func1 (native)", "", 1)
+				output += "\nException: " + errstr
+			}
+			notebook.save([]byte(output), unique, name+".out")
+		}(unique, section, script, jsvm, rizin)
+
+		c.Redirect(302, webroot+"output/check/"+unique+"/"+section)
+	})
 	output.POST("/exec/:unique", func(c *gin.Context) {
 		unique := c.Param("unique")
 		command := c.DefaultPostForm("command", "")
@@ -70,7 +103,21 @@ func serverAddOutput(output *gin.RouterGroup) {
 			}
 		}
 	})
-	output.GET("/input/:unique", func(c *gin.Context) {
+	output.GET("/input/script/:unique", func(c *gin.Context) {
+		unique := c.Param("unique")
+		if !IsValidNonce(unique) {
+			c.HTML(400, "error.tmpl", gin.H{
+				"root":  webroot,
+				"error": "invalid request",
+			})
+		} else {
+			c.HTML(200, "script.tmpl", gin.H{
+				"unique": unique,
+				"root":   webroot,
+			})
+		}
+	})
+	output.GET("/input/console/:unique", func(c *gin.Context) {
 		unique := c.Param("unique")
 		if !IsValidNonce(unique) {
 			c.HTML(400, "error.tmpl", gin.H{

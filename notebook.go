@@ -61,6 +61,7 @@ type Notebook struct {
 	uniques []string
 	storage string
 	pipes   map[string]*Rizin
+	jsvm    *JavaScript
 	rizin   string
 }
 
@@ -82,12 +83,17 @@ func NewNotebook(storage, rizinbin string) *Notebook {
 		pages[unique] = page
 		uniques = append(uniques, unique)
 	}
+	jsvm := NewJavaScript()
+	if jsvm == nil {
+		panic("failed to create scripting engine")
+	}
 	sort.Strings(uniques)
 	return &Notebook{
 		pages:   pages,
 		uniques: uniques,
 		storage: storage,
 		pipes:   map[string]*Rizin{},
+		jsvm:    jsvm,
 		rizin:   rizinbin,
 	}
 }
@@ -147,6 +153,36 @@ func (n *Notebook) newmd(unique string) string {
 		page["lines"] = append(page["lines"].([]interface{}), gin.H{
 			"type":   "markdown",
 			"unique": eunique,
+		})
+		filepath := path.Join(n.storage, unique, PAGE_FILE)
+		bytes, _ := json.MarshalIndent(page, "", "\t")
+		if ioutil.WriteFile(filepath, bytes, 0644) == nil {
+			n.pages[unique] = page
+			return eunique
+		}
+	}
+	return ""
+}
+
+func (n *Notebook) newscript(unique, script string) string {
+	if len(unique) != PAGE_NONCE_SIZE {
+		return ""
+	}
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if data, ok := n.pages[unique]; ok {
+		page := data.(gin.H)
+		var eunique = Nonce(ELEMENT_NONCE_SIZE)
+		for {
+			if _, err := n.file(unique, eunique+".out"); err != nil {
+				break
+			}
+			eunique = Nonce(ELEMENT_NONCE_SIZE)
+		}
+		page["lines"] = append(page["lines"].([]interface{}), gin.H{
+			"type":   "script",
+			"unique": eunique,
+			"script": script,
 		})
 		filepath := path.Join(n.storage, unique, PAGE_FILE)
 		bytes, _ := json.MarshalIndent(page, "", "\t")

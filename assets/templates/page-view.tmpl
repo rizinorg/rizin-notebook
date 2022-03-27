@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ $root }}static/spectre.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type="text/css">
+        @font-face { font-family: 'Inconsolata'; src: URL('{{ .root }}static/inconsolata.ttf') format('truetype'); }
         .spacing-top { margin: 3px 0px 0px 0px; }
         .spacing-left { margin: 0px 3px 0px 0px; }
         .align-center { text-align: center; }
@@ -21,6 +22,14 @@
         .resizer > .resized { flex-grow: 1; margin: 0; padding: 0; border: 0 }
         .syntax-menu { right: 35px; }
         .align-right { text-align: right; }
+        textarea {
+          margin: 5px;
+          font-family: Inconsolata;
+          background-color: inherit;
+          color: inherit;
+          line-height: 8px;
+          resize: none;
+        }
     </style>
     <script>
       function handle(obj) {
@@ -57,6 +66,25 @@
         div.appendChild(iframe);
         body.insertBefore(div, body.childNodes[body.childNodes.length - 2]);
       }
+      function newsc() {
+        var body = document.getElementById("page-body");
+        var div = document.createElement("div");
+        var iframe = document.createElement("iframe");
+
+        div.className = "panel spacing-top";
+        iframe.className = "panel-body no-borders";
+        iframe.style.height = "300px";
+        iframe.setAttribute("frameborder", "0");
+        iframe.setAttribute("marginheight", "0");
+        iframe.setAttribute("marginwidth", "0");
+        iframe.setAttribute("width", "100%");
+        iframe.setAttribute("height", "110%");
+        iframe.setAttribute("scrolling", "no");
+        iframe.setAttribute("onload", "output(this)");
+        iframe.src = "{{ $root }}output/input/script/{{ $page.unique }}";
+        div.appendChild(iframe);
+        body.insertBefore(div, body.childNodes[body.childNodes.length - 2]);
+      }
       function newcm() {
         var body = document.getElementById("page-body");
         var div = document.createElement("div");
@@ -71,7 +99,7 @@
         iframe.setAttribute("height", "100%");
         iframe.setAttribute("scrolling", "no");
         iframe.setAttribute("onload", "output(this)");
-        iframe.src = "{{ $root }}output/input/{{ $page.unique }}";
+        iframe.src = "{{ $root }}output/input/console/{{ $page.unique }}";
         div.appendChild(iframe);
         body.insertBefore(div, body.childNodes[body.childNodes.length - 2]);
       }
@@ -120,7 +148,11 @@
           </div>
 {{ else }}
           <div class="input-group spacing-top">
+{{ if eq $line.type "script" }}
+            <code style="display: block; white-space: pre-wrap;" class="input-group-addon spacing-right spacing-left">{{ $line.script }}</code>
+{{ else }}
             <code class="input-group-addon spacing-right spacing-left">{{ $line.command }}</code>
+{{ end }}
             <a class="btn float-right" href="{{ $root }}output/delete/{{ $page.unique }}/{{ $line.unique }}" onclick="confirm_delete(event)">
               <i class="icon icon-delete icon-height">Delete</i>
             </a>
@@ -132,6 +164,8 @@
 {{ end }}
           <div class="input-group spacing-top" style="margin-top: 10px;">
             <a class="btn" href="#" onclick="newmd()"><i class="icon icon-message">Markdown</i> Markdown</a>
+            &nbsp;
+            <a class="btn" href="#" onclick="newsc()"><i class="icon icon-share">Script</i> Script</a>
 {{ if $pipe }}
             &nbsp;
             <a class="btn" href="#" onclick="newcm()"><i class="icon icon-resize-horiz">Command Line</i> Command Line</a>
