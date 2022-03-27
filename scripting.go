@@ -23,6 +23,19 @@ func rizinCmd(command string, rizin *Rizin) (string, error) {
 	return result, err
 }
 
+func convertValue(ivalue interface{}) string {
+	switch value := ivalue.(type) {
+	case []interface{}:
+		bytes, _ := json.MarshalIndent(value, "", "\t")
+		return string(bytes)
+	case map[string]interface{}:
+		bytes, _ := json.MarshalIndent(value, "", "\t")
+		return string(bytes)
+	default:
+		return fmt.Sprintf("%v", value)
+	}
+}
+
 func NewJavaScript() *JavaScript {
 	runtime := goja.New()
 	if runtime == nil {
@@ -61,13 +74,8 @@ func NewJavaScript() *JavaScript {
 			if err != nil {
 				panic(js.runtime.ToValue(err))
 			}
-			array := []interface{}{}
 			var data interface{}
 			err = json.Unmarshal([]byte(result), &data)
-			if err != nil {
-				err = json.Unmarshal([]byte(result), &array)
-				data = array
-			}
 			if err != nil {
 				panic(js.runtime.ToValue(err))
 			}
@@ -81,7 +89,7 @@ func NewJavaScript() *JavaScript {
 	console["log"] = func(args ...interface{}) {
 		n_args := len(args)
 		for i, value := range args {
-			js.output += fmt.Sprintf("%v", value)
+			js.output += convertValue(value)
 			if i+1 < n_args {
 				js.output += " "
 			}
