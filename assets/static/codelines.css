@@ -1,0 +1,38 @@
+.code-editor, .code-lines {
+  font-family: lucida console, courier new, courier, monospace;
+  margin: 0;
+  height: 75vh;
+  border-radius: 0;
+  resize: none;
+  line-height: 1.2;
+  outline: none;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  font-family: Inconsolata;
+}
+.code-lines:focus-visible,
+.code-editor:focus-visible {
+  outline:none;
+}
+.code-lines {
+  display: flex;
+  border-color: transparent;
+  overflow-y: hidden;
+  text-align: right;
+  box-shadow: none;
+  color: #707070;
+  background-color: #d8d8d8;
+  position: absolute;
+  width: 3.5rem;
+  background-color:#3E3D32;
+  border-color:#3E3D32;
+  color:#928869;
+}
+.code-editor {
+  padding-left: calc(3.5rem + 5px);
+  width:100%;
+  background-color:#272822;
+  border-color:#272822;
+  color:#ffffff;
+}

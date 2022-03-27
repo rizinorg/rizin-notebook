@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os/exec"
@@ -78,6 +79,7 @@ func (r *Rizin) exec(cmd string) (string, error) {
 		fmt.Println("pipe error:", err)
 		return "", err
 	}
+	buf = string(bytes.Trim([]byte(buf), "\x00"))
 	return buf, nil
 }
 

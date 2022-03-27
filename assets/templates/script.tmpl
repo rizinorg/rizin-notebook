@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Rizin Notebook</title>
+  <link rel="stylesheet" href="{{ .root }}static/spectre-icons.min.css">
+  <link rel="stylesheet" href="{{ .root }}static/spectre.min.css">
+  <link rel="stylesheet" href="{{ .root }}static/simplemde.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style type="text/css">
+    html, body { width: 100%; height: 100%; margin: 0 }
+    .button-edit { width: 75px ! important; margin-top: 9px; margin-right: 9px; }
+    @font-face { font-family: 'Inconsolata'; src: URL('{{ .root }}static/inconsolata.ttf') format('truetype'); }
+  </style>
+  <link rel="stylesheet" href="{{ .root }}static/codelines.css">
+</head>
+<body>
+  <form style="margin-top: 15px; height: 100%;" action="{{ .root }}output/script/{{ .unique }}" method="POST">
+    <div class="form-group">
+      <p><textarea id="codelines" class="code-lines" wrap="off" readonly>1 </textarea><textarea id="codeeditor" class="code-editor" wrap="off" name="script">console.log(rizin.cmd("?e hello world").trim(), "from the script");</textarea></p>
+    </div>
+    <div class="form-group">
+      <button class="btn btn-primary" type="submit">Run</button>
+      <a class="btn" href="{{ .root }}output/deleted">Cancel</a>
+    </div>
+  </form>
+  <script type="text/javascript">
+    var editor = document.getElementById('codeeditor');
+    var lines = document.getElementById('codelines');
+    editor.addEventListener('scroll', function() {
+      lines.scrollTop = editor.scrollTop;
+      lines.scrollLeft = editor.scrollLeft;
+    });
+    editor.addEventListener('keydown', function(e) {
+      if (e.keyCode === 9) {
+        // TAB = 9
+        e.preventDefault();
+        editor.value = editor.value.slice(0, editor.selectionStart) + '\t' + value.slice(editor.selectionEnd);
+        editor.setSelectionRange(editor.selectionStart + 2, editor.selectionStart + 2)
+      }
+    });
+    var lineCountCache = 0;
+    function updateLines() {
+      var editorLines = editor.value.split('\n');
+      if (lineCountCache != editorLines.length) {
+        lines.value = editorLines.map(function(e, n) {
+          return (n + 1).toString() + ' ';
+        }).join('\n');
+      }
+      lineCountCache = lineCount;
+    }
+    editor.addEventListener('input', function() {
+        updateLines();
+    });
+  </script>
+</body>
+</html>
