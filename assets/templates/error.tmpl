@@ -1,4 +1,4 @@
-{{ $error := .error }}{{ $llen := len .location }}<!DOCTYPE html>
+{{ $error := .error }}{{ $llen := 0 }}{{ if .location }}{{ $llen := len .location }}{{ end }}<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
