@@ -117,7 +117,7 @@ jobs:
           $PWD/bin/go-assets-builder assets -o assets.go
           go mod download
  
-      - name: Build sample
+      - name: Build notebook
         run: go build -o rz-notebook-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
     
       - name: Build Mips softfloat
