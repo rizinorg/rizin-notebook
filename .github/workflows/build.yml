@@ -149,7 +149,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
       - name: List downloaded files
-        run: ls -lah * */*
+        run: ls -lah rz-notebook-*/*
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/') || contains(github.ref, 'test-release')
@@ -168,6 +168,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: Nightly
           draft: false
+          tag_name: nightly
           prerelease: true
           files: |
             ./rz-notebook-*/*
