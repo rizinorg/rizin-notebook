@@ -15,7 +15,7 @@ Requires at least rizin version `0.2.0`
 ## Building
 
 ```bash
-go get -v github.com/gin-gonic/gin
+# required for go-assets-builder
 go get -v github.com/jessevdk/go-assets-builder
 
 go-assets-builder assets -o assets.go
