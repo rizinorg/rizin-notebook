@@ -1,4 +1,4 @@
-name: Build and Release
+name: Build Notebook
 on:
   pull_request:
     branches: main
