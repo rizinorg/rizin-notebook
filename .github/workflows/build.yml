@@ -147,6 +147,9 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@v4
+      - name: Set variables
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - uses: actions/download-artifact@v4
       - name: List downloaded files
         run: ls -lah rz-notebook-*/*
@@ -167,9 +170,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: Nightly
+          name: Nightly (${{ steps.vars.outputs.sha_short }})
           draft: false
-          tag_name: nightly
+          tag_name: nightly-${{ steps.vars.outputs.sha_short }}
           generate_release_notes: true
           prerelease: true
           files: |
