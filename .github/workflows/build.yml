@@ -157,6 +157,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: Release ${{ github.ref }}
+          generate_release_notes: true
           draft: true
           prerelease: false
           files: |
@@ -169,6 +170,7 @@ jobs:
           name: Nightly
           draft: false
           tag_name: nightly
+          generate_release_notes: true
           prerelease: true
           files: |
             ./rz-notebook-*/*
