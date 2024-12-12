@@ -117,8 +117,7 @@ jobs:
 
       - name: Get project dependencies
         run: |
-          GO111MODULE=off go get -v github.com/jessevdk/go-assets-builder
-          GOBIN=$PWD/bin/ GO111MODULE=off go install github.com/jessevdk/go-assets-builder
+          GOBIN=$PWD/bin/ go install github.com/jessevdk/go-assets-builder@latest
           $PWD/bin/go-assets-builder assets -o assets.go
           go mod download
  
