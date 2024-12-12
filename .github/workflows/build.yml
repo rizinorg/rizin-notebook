@@ -1,0 +1,175 @@
+name: Build and Release
+on:
+  push:
+    branches: main
+
+# Automatically cancel any previous workflow on new push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # Include amd64 on all platforms.
+        goos: [windows, freebsd, openbsd, linux, dragonfly, darwin]
+        goarch: [amd64, 386]
+        exclude:
+          # Exclude i386 on darwin and dragonfly
+          # because they are not supported by go.
+          - goarch: 386
+            goos: dragonfly
+          - goarch: 386
+            goos: darwin
+        include:
+          # BEIGIN MacOS ARM64
+          - goos: darwin
+            goarch: arm64
+          # END MacOS ARM64
+          # BEGIN Linux ARM 5 6 7
+          - goos: linux
+            goarch: arm
+            goarm: 7
+          - goos: linux
+            goarch: arm
+            goarm: 6
+          - goos: linux
+            goarch: arm
+            goarm: 5
+          # END Linux ARM 5 6 7
+          # BEGIN Android ARM 8
+          - goos: android
+            goarch: arm64
+          # END Android ARM 8
+          # Windows ARM 7
+          - goos: windows
+            goarch: arm
+            goarm: 7
+          # BEGIN Other architectures
+          # BEGIN riscv64 & ARM64
+          - goos: linux
+            goarch: arm64
+          - goos: linux
+            goarch: riscv64
+          # END riscv64 & ARM64
+          # BEGIN MIPS
+          - goos: linux
+            goarch: mips64
+          - goos: linux
+            goarch: mips64le
+          - goos: linux
+            goarch: mipsle
+          - goos: linux
+            goarch: mips
+          # END MIPS
+          # BEGIN PPC
+          - goos: linux
+            goarch: ppc64
+          - goos: linux
+            goarch: ppc64le
+          # END PPC
+          # BEGIN FreeBSD ARM
+          - goos: freebsd
+            goarch: arm64
+          - goos: freebsd
+            goarch: arm
+            goarm: 7
+          # END FreeBSD ARM
+          # BEGIN S390X
+          - goos: linux
+            goarch: s390x
+          # END S390X
+          # BEGIN LoongArch64
+          - goos: linux
+            goarch: loong64
+          # END LoongArch64
+          # END Other architectures
+          # BEGIN OPENBSD ARM
+          - goos: openbsd
+            goarch: arm64
+          - goos: openbsd
+            goarch: arm
+            goarm: 7
+          # END OPENBSD ARM
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+    env:
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+      GOARM: ${{ matrix.goarm }}
+      CGO_ENABLED: 0
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v4
+
+      - name: Show workflow information 
+        id: get_filename
+        run: |
+          export _NAME=$(jq ".[\"$GOOS-$GOARCH$GOARM$GOMIPS\"].friendlyName" -r < .github/build/friendly-filenames.json)
+          echo "GOOS: $GOOS, GOARCH: $GOARCH, GOARM: $GOARM, GOMIPS: $GOMIPS, RELEASE_NAME: $_NAME"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ^1.23
+          cache: false
+
+      - name: Get project dependencies
+        run: |
+          # we do not cross-compile this.
+          GOOS=linux GOARCH=amd64 GOARM="" GOBIN="$PWD/bin/" go install github.com/jessevdk/go-assets-builder@latest
+          $PWD/bin/go-assets-builder assets -o assets.go
+          # download the modules.
+          go mod download
+ 
+      - name: Build notebook
+        run: go build -o rz-notebook-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }} -ldflags "-X main.NBVERSION=$(git rev-list -1 HEAD)"
+    
+      - name: Build Mips softfloat
+        if: matrix.goarch == 'mips' || matrix.goarch == 'mipsle'
+        run: GOMIPS=softfloat go build -o rz-notebook-${{ matrix.goos }}-${{ matrix.goarch }} -ldflags "-X main.NBVERSION=$(git rev-list -1 HEAD)"
+
+      - name: Rename Windows
+        if: matrix.goos == 'windows'
+        run: mv rz-notebook-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }} rz-notebook-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}.exe
+
+      - name: Upload files to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rz-notebook-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: ./rz-notebook-${{ matrix.goos }}-*
+
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      - name: List downloaded files
+        run: ls -lah * */*
+
+      - name: Create Release
+        id: create_release
+        if: startsWith(github.ref, 'refs/tags/') || contains(github.ref, 'test-release')
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+          files: |
+            ./rz-notebook-*/*
+
+      - name: Create Nightly
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Nightly
+          draft: false
+          prerelease: true
+          files: |
+            ./rz-notebook-*/*

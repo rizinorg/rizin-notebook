@@ -1,0 +1,44 @@
+name: Build Notebook
+on:
+  pull_request:
+    branches: main
+
+# Automatically cancel any previous workflow on new push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ^1.23
+          cache: false
+
+      - name: Get project dependencies
+        run: |
+          # we do not cross-compile this.
+          GOOS=linux GOARCH=amd64 GOARM="" GOBIN="$PWD/bin/" go install github.com/jessevdk/go-assets-builder@latest
+          $PWD/bin/go-assets-builder assets -o assets.go
+          # download the modules.
+          go mod download
+ 
+      - name: Build notebook
+        run: go build -o rz-notebook -ldflags "-X main.NBVERSION=$(git rev-list -1 HEAD)"
+
+      - name: Upload files to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rz-notebook
+          path: ./rz-notebook
