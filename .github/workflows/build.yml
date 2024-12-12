@@ -79,6 +79,10 @@ jobs:
           - goos: linux
             goarch: s390x
           # END S390X
+          # BEGIN LoongArch64
+          - goos: linux
+            goarch: loong64
+          # END LoongArch64
           # END Other architectures
           # BEGIN OPENBSD ARM
           - goos: openbsd
@@ -113,7 +117,7 @@ jobs:
 
       - name: Get project dependencies
         run: |
-          go get -v github.com/jessevdk/go-assets-builder
+          GO111MODULE=off go get -v github.com/jessevdk/go-assets-builder
           GOBIN=$PWD/bin/ GO111MODULE=off go install github.com/jessevdk/go-assets-builder
           $PWD/bin/go-assets-builder assets -o assets.go
           go mod download
