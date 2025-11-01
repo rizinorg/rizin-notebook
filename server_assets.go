@@ -1,15 +1,19 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"html/template"
-	"io/ioutil"
+	"io/fs"
 	"net/http"
 	"path"
 	"strings"
 )
+
+//go:embed assets/*
+var Assets embed.FS
 
 var functionMap = template.FuncMap{
 	"raw": func(b []byte) template.HTML {
@@ -32,32 +36,21 @@ var functionMap = template.FuncMap{
 
 func loadEmbedded() (*template.Template, error) {
 	t := template.New("")
-	for name, file := range Assets.Files {
-		if file.IsDir() || !strings.HasSuffix(name, ".tmpl") {
-			continue
+	fs.WalkDir(Assets, ".", func(filePath string, file fs.DirEntry, err error) error {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".tmpl") {
+			return nil
 		}
-		h, err := ioutil.ReadAll(file)
-		if err != nil {
-			return nil, err
-		}
-		t, err = t.New(path.Base(name)).Funcs(functionMap).Parse(string(h))
-		if err != nil {
-			return nil, err
-		}
-	}
+
+		h, _ := Assets.ReadFile(filePath)
+		t, err = t.New(file.Name()).Funcs(functionMap).Parse(string(h))
+		return err
+	})
 	return t, nil
 }
 
 func loadAsset(file string) ([]byte, error) {
-	asset, err := Assets.Open("/assets/static/" + file)
-	if err != nil {
-		return nil, nil
-	}
-	content, err := ioutil.ReadAll(asset)
-	if err != nil {
-		return nil, err
-	}
-	return content, nil
+	file = path.Base(file)
+	return Assets.ReadFile("assets/static/" + file)
 }
 
 func setupTemplate(assets string, router *gin.Engine) (string, string) {

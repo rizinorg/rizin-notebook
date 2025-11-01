@@ -7,7 +7,6 @@ toolchain go1.24.1
 require (
 	github.com/dop251/goja v0.0.0-20250309171923-bcd7cc6bf64c
 	github.com/gin-gonic/gin v1.10.0
-	github.com/jessevdk/go-assets v0.0.0-20160921144138-4f4301a06e15
 	golang.org/x/sync v0.12.0
 )
 
@@ -15,7 +14,6 @@ require (
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cloudwego/base64x v0.1.5 // indirect
-	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/gin-contrib/sse v1.0.0 // indirect
