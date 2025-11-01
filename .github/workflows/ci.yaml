@@ -27,12 +27,7 @@ jobs:
           cache: false
 
       - name: Get project dependencies
-        run: |
-          # we do not cross-compile this.
-          GOOS=linux GOARCH=amd64 GOARM="" GOBIN="$PWD/bin/" go install github.com/jessevdk/go-assets-builder@latest
-          $PWD/bin/go-assets-builder assets -o assets.go
-          # download the modules.
-          go mod download
+        run: go mod download
  
       - name: Build notebook
         run: go build -o rz-notebook -ldflags "-X main.NBVERSION=$(git rev-list -1 HEAD)"
