@@ -92,16 +92,18 @@ func serverAddOutput(output *gin.RouterGroup) {
 				"root":  webroot,
 				"error": "invalid request",
 			})
-		} else {
-			_, err := notebook.file(tokens[0], tokens[1]+".out")
-			if err != nil {
-				c.HTML(200, "reload.tmpl", gin.H{
-					"root": webroot,
-				})
-			} else {
-				c.Redirect(302, webroot+"output/loaded")
-			}
+			return
 		}
+
+		_, err := notebook.file(tokens[0], tokens[1]+".out")
+		if err != nil {
+			c.HTML(200, "reload.tmpl", gin.H{
+				"root": webroot,
+			})
+			return
+		}
+
+		c.Redirect(302, webroot+"output/loaded")
 	})
 	output.GET("/input/script/:unique", func(c *gin.Context) {
 		unique := c.Param("unique")
@@ -110,12 +112,13 @@ func serverAddOutput(output *gin.RouterGroup) {
 				"root":  webroot,
 				"error": "invalid request",
 			})
-		} else {
-			c.HTML(200, "script.tmpl", gin.H{
-				"unique": unique,
-				"root":   webroot,
-			})
+			return
 		}
+
+		c.HTML(200, "script.tmpl", gin.H{
+			"unique": unique,
+			"root":   webroot,
+		})
 	})
 	output.GET("/input/console/:unique", func(c *gin.Context) {
 		unique := c.Param("unique")
@@ -124,12 +127,12 @@ func serverAddOutput(output *gin.RouterGroup) {
 				"root":  webroot,
 				"error": "invalid request",
 			})
-		} else {
-			c.HTML(200, "console.tmpl", gin.H{
-				"unique": unique,
-				"root":   webroot,
-			})
+			return
 		}
+		c.HTML(200, "console.tmpl", gin.H{
+			"unique": unique,
+			"root":   webroot,
+		})
 	})
 	output.GET("/view/*path", func(c *gin.Context) {
 		tokens := strings.Split(c.Param("path")[1:], "/")
@@ -138,21 +141,28 @@ func serverAddOutput(output *gin.RouterGroup) {
 				"root":   webroot,
 				"output": []byte("invalid request"),
 			})
-		} else {
-			bytes, err := notebook.file(tokens[0], tokens[1]+".out")
-			if err != nil {
-				c.HTML(404, "output.tmpl", gin.H{
-					"root":   webroot,
-					"output": []byte("missing output file"),
-				})
-			} else {
-				output := toHtml(bytes)
-				c.HTML(200, "output.tmpl", gin.H{
-					"root":   webroot,
-					"output": output,
-				})
-			}
+			return
 		}
+
+		bytes, err := notebook.file(tokens[0], tokens[1]+".out")
+		if err != nil {
+			c.HTML(404, "output.tmpl", gin.H{
+				"root":   webroot,
+				"output": []byte("missing output file"),
+			})
+			return
+		}
+
+		outputStr := fromRawToString(bytes)
+		output, ok := toCsv(outputStr)
+		if !ok {
+			output = toHtml(outputStr)
+		}
+
+		c.HTML(200, "output.tmpl", gin.H{
+			"root":   webroot,
+			"output": output,
+		})
 	})
 	output.GET("/delete/*path", func(c *gin.Context) {
 		path := c.Param("path")
@@ -162,15 +172,15 @@ func serverAddOutput(output *gin.RouterGroup) {
 				"root":  webroot,
 				"error": "invalid request",
 			})
-		} else {
-			if notebook.deleteElem(tokens[0], tokens[1], false) {
-				c.Redirect(302, webroot+"view/"+tokens[0])
-			} else {
-				c.HTML(400, "error.tmpl", gin.H{
-					"root":  webroot,
-					"error": "invalid request",
-				})
-			}
+			return
+		} else if notebook.deleteElem(tokens[0], tokens[1], false) {
+			c.Redirect(302, webroot+"view/"+tokens[0])
+			return
 		}
+
+		c.HTML(400, "error.tmpl", gin.H{
+			"root":  webroot,
+			"error": "invalid request",
+		})
 	})
 }

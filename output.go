@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"html"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -288,13 +291,42 @@ var color265 = map[string]string{
 }
 
 var col256 = regexp.MustCompile(`^\[([34]8);5;(\d+)m`)
-var colrgb = regexp.MustCompile(`^\[([34]8);2;(\d+);(\d+);(\d+)m`)
-var escape = regexp.MustCompile(`^\[(\d+;)?(\d+;)?(\d+;)?(\d+;)?(\d+)([A-Za-z])`)
+var colrgb = regexp.MustCompile(`^\[([34]8|1);2;(\d+);(\d+);(\d+)m`)
+var escape = regexp.MustCompile(`^\[(;?\d+)+([A-Za-z])`)
 
-func toHtml(raw []byte) []byte {
+func fromRawToString(raw []byte) string {
 	var output = strings.TrimSuffix(string(raw), "\x00")
 	output = strings.ReplaceAll(output, "\r", "")
-	output = strings.Trim(output, "\n")
+	return strings.Trim(output, "\n")
+}
+
+func toCsv(output string) ([]byte, bool) {
+	reader := csv.NewReader(strings.NewReader(output))
+	reader.Comma = ','
+
+	var htmlStr = "<table>\n"
+	for i := 0; ; i++ {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil || (i == 0 && len(record) < 2) {
+			return nil, false
+		}
+
+		htmlStr += "<tr>"
+		for _, elem := range record {
+			htmlStr += "\n<td>"
+			htmlStr += html.EscapeString(elem)
+			htmlStr += "</td>"
+		}
+		htmlStr += "\n</tr>\n"
+	}
+
+	htmlStr += "</table>"
+	return []byte(htmlStr), true
+}
+
+func toHtml(output string) []byte {
 	if output == "" {
 		return []byte{}
 	}
@@ -303,20 +335,21 @@ func toHtml(raw []byte) []byte {
 	output = strings.ReplaceAll(output, ">", "&gt;")
 	output = strings.ReplaceAll(output, "\"", "&quot;")
 	output = strings.ReplaceAll(output, "'", "&apos;")
-	var html = ""
+	var htmlStr = ""
 	tokens := strings.Split(output, "\x1b")
 	for _, token := range tokens {
 		if token == "" {
 			continue
 		}
+
 		if strings.HasPrefix(token, "[H") ||
 			strings.HasPrefix(token, "[s") ||
 			strings.HasPrefix(token, "[u") ||
 			strings.HasPrefix(token, "[J") ||
 			strings.HasPrefix(token, "[K") {
-			html += token[2:]
+			htmlStr += token[2:]
 		} else if strings.HasPrefix(token, "[#;#R") {
-			html += token[5:]
+			htmlStr += token[5:]
 		} else if strings.HasPrefix(token, "[#") ||
 			strings.HasPrefix(token, "[0m") ||
 			strings.HasPrefix(token, "[0J") ||
@@ -326,31 +359,31 @@ func toHtml(raw []byte) []byte {
 			strings.HasPrefix(token, "[1K") ||
 			strings.HasPrefix(token, "[2K") ||
 			strings.HasPrefix(token, "[6n") {
-			html += token[3:]
+			htmlStr += token[3:]
 		} else if strings.HasPrefix(token, "[1m") ||
 			strings.HasPrefix(token, "[2m") {
-			html += "<b>"
-			html += token[3:]
-			html += "</b>"
+			htmlStr += "<b>"
+			htmlStr += token[3:]
+			htmlStr += "</b>"
 		} else if strings.HasPrefix(token, "[3m") {
-			html += "<i>"
-			html += token[3:]
-			html += "</i>"
+			htmlStr += "<i>"
+			htmlStr += token[3:]
+			htmlStr += "</i>"
 		} else if strings.HasPrefix(token, "[4m") {
-			html += "<ins>"
-			html += token[3:]
-			html += "</ins>"
+			htmlStr += "<ins>"
+			htmlStr += token[3:]
+			htmlStr += "</ins>"
 		} else if strings.HasPrefix(token, "[5m") {
-			html += "<blink>"
-			html += token[3:]
-			html += "</blink>"
+			htmlStr += "<blink>"
+			htmlStr += token[3:]
+			htmlStr += "</blink>"
 		} else if strings.HasPrefix(token, "[7m") ||
 			strings.HasPrefix(token, "[8m") {
-			html += token[3:]
+			htmlStr += token[3:]
 		} else if strings.HasPrefix(token, "[9m") {
-			html += "<strike>"
-			html += token[3:]
-			html += "</strike>"
+			htmlStr += "<strike>"
+			htmlStr += token[3:]
+			htmlStr += "</strike>"
 		} else if strings.HasPrefix(token, "[22m") ||
 			strings.HasPrefix(token, "[23m") ||
 			strings.HasPrefix(token, "[24m") ||
@@ -358,9 +391,9 @@ func toHtml(raw []byte) []byte {
 			strings.HasPrefix(token, "[28m") ||
 			strings.HasPrefix(token, "[27m") ||
 			strings.HasPrefix(token, "[29m") {
-			html += token[4:]
+			htmlStr += token[4:]
 		} else if token == "7" || token == "8" {
-			html += token[1:]
+			htmlStr += token[1:]
 		} else {
 			var btok = []byte(token)
 			var found = col256.FindSubmatch(btok)
@@ -371,14 +404,14 @@ func toHtml(raw []byte) []byte {
 				color, ok := color265[string(found[2])]
 				if ok {
 					if string(found[1]) == "48" {
-						html += fmt.Sprintf("<span style=\"background-color: %s\">", color)
+						htmlStr += fmt.Sprintf("<span style=\"background-color: %s\">", color)
 					} else {
-						html += fmt.Sprintf("<span style=\"color: %s\">", color)
+						htmlStr += fmt.Sprintf("<span style=\"color: %s\">", color)
 					}
 				}
-				html += token[len(found[0]):]
+				htmlStr += token[len(found[0]):]
 				if ok {
-					html += "</span>"
+					htmlStr += "</span>"
 				}
 				continue
 			}
@@ -395,21 +428,21 @@ func toHtml(raw []byte) []byte {
 				g &= 0xFF
 				b &= 0xFF
 				if string(found[1]) == "48" {
-					html += fmt.Sprintf("<span style=\"background-color: #%02x%02x%02x\">", r, g, b)
+					htmlStr += fmt.Sprintf("<span style=\"background-color: #%02x%02x%02x\">", r, g, b)
 				} else {
-					html += fmt.Sprintf("<span style=\"color: #%02x%02x%02x\">", r, g, b)
+					htmlStr += fmt.Sprintf("<span style=\"color: #%02x%02x%02x\">", r, g, b)
 				}
-				html += token[len(found[0]):]
-				html += "</span>"
+				htmlStr += token[len(found[0]):]
+				htmlStr += "</span>"
 				continue
 			}
 
 			found = escape.FindSubmatch(btok)
 			if len(found) < 1 {
-				html += token
+				htmlStr += token
 				continue
 			} else if string(found[len(found)-1]) != "m" {
-				html += token[len(found[0]):]
+				htmlStr += token[len(found[0]):]
 				continue
 			} else if len(token) == len(found[0]) {
 				continue
@@ -424,30 +457,30 @@ func toHtml(raw []byte) []byte {
 					e = e[:len(e)-1]
 				}
 				if e == "0" {
-					html += tags
+					htmlStr += tags
 					tags = ""
 					continue
 				} else if tag, ok := tagMap[e]; ok {
-					html += fmt.Sprintf("<%s>", tag)
+					htmlStr += fmt.Sprintf("<%s>", tag)
 					tags += fmt.Sprintf("</%s>", tag)
 				} else if len(e) == 2 && (e[0] == '3' || e[0] == '4' || e[0] == '9') && e[1] != '8' {
 					color, _ := colMap[string(e[1])]
 					if e[0] == '4' {
-						html += fmt.Sprintf("<span style=\"background-color: %s\">", color)
+						htmlStr += fmt.Sprintf("<span style=\"background-color: %s\">", color)
 					} else {
-						html += fmt.Sprintf("<span style=\"color: %s\">", color)
+						htmlStr += fmt.Sprintf("<span style=\"color: %s\">", color)
 					}
 					tags += "</span>"
 				} else if len(e) == 3 && e[0] == '1' && e[1] == '0' && e[2] != '8' {
 					color, _ := colMap[string(e[1])]
-					html += fmt.Sprintf("<span style=\"background-color: %s\">", color)
+					htmlStr += fmt.Sprintf("<span style=\"background-color: %s\">", color)
 					tags += "</span>"
 				}
 			}
-			html += token[len(found[0]):]
-			html += tags
+			htmlStr += token[len(found[0]):]
+			htmlStr += tags
 		}
 	}
-	html = strings.ReplaceAll(html, "\n", "<br>\n")
-	return []byte(html)
+	htmlStr = strings.ReplaceAll(htmlStr, "\n", "<br>\n")
+	return []byte("<pre>" + htmlStr + "</pre>")
 }

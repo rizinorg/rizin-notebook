@@ -22,9 +22,34 @@
     @font-face { font-family: 'Inconsolata'; src: URL('{{ .root }}static/inconsolata.ttf') format('truetype'); }
     html, body { width: 100%; height: 100%; background-color: #4b4b4b; color: #eeeeee; font-family: Inconsolata; }
     pre { width: 100%; height: 100%; margin: 5px; background-color: inherit; color: inherit; line-height: 10px; }
+    table {
+      border-collapse: separate;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+      background-color: inherit;
+      color: inherit;
+      height: 100%;
+      text-align: left;
+    }
+    th {
+      font-family: sans-serif;
+      text-align: left;
+    }
+    td, th {
+      padding: 3px 10px;
+    }
+    tbody tr {
+      border-bottom: 1px solid #dddddd;
+    }
+    tbody tr:nth-of-type(even) {
+      -webkit-backdrop-filter: invert(40%);
+      backdrop-filter: invert(40%);
+    }
+    tbody tr:last-of-type {
+      border-bottom: 2px solid #009879;
+    }
   </style>
 </head>
 <body>
-  <pre>{{ .output | raw }}</pre>
+  {{ .output | raw }}
 </body>
 </html>
