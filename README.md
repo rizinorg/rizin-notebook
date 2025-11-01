@@ -15,9 +15,5 @@ Requires at least rizin version `0.2.0`
 ## Building
 
 ```bash
-# required for go-assets-builder
-go get -v github.com/jessevdk/go-assets-builder
-
-go-assets-builder assets -o assets.go
 go build -ldflags "-X main.NBVERSION=$(git rev-list -1 HEAD)"
 ```
