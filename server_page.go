@@ -77,9 +77,10 @@ func serverAddPage(root *gin.RouterGroup) {
 				"root":  webroot,
 				"error": "cannot find page",
 			})
-		} else {
-			c.Redirect(302, webroot)
+			return
 		}
+
+		c.Redirect(302, webroot)
 	})
 	root.GET("/edit/:unique", func(c *gin.Context) {
 		unique := c.Param("unique")
@@ -89,13 +90,13 @@ func serverAddPage(root *gin.RouterGroup) {
 				"root":  webroot,
 				"error": "cannot find page",
 			})
-		} else {
-			c.HTML(200, "page-new.tmpl", gin.H{
-				"root":   webroot,
-				"title":  page["title"],
-				"unique": unique,
-			})
+			return
 		}
+		c.HTML(200, "page-new.tmpl", gin.H{
+			"root":   webroot,
+			"title":  page["title"],
+			"unique": unique,
+		})
 	})
 	root.GET("/view/:unique", func(c *gin.Context) {
 		unique := c.Param("unique")
@@ -105,12 +106,14 @@ func serverAddPage(root *gin.RouterGroup) {
 				"root":  webroot,
 				"error": "cannot find a new page",
 			})
-		} else {
-			c.HTML(200, "page-view.tmpl", gin.H{
-				"root": webroot,
-				"page": page,
-				"pipe": notebook.open(unique, false) != nil,
-			})
+			return
 		}
+
+		c.HTML(200, "page-view.tmpl", gin.H{
+			"root": webroot,
+			"page": page,
+			"pipe": notebook.open(unique, false) != nil,
+			"cmds": notebook.cmds,
+		})
 	})
 }
