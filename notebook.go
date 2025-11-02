@@ -63,6 +63,7 @@ type Notebook struct {
 	pipes   map[string]*Rizin
 	jsvm    *JavaScript
 	rizin   string
+	cmds    map[string]RizinCommand
 }
 
 func NewNotebook(storage, rizinbin string) *Notebook {
@@ -70,6 +71,11 @@ func NewNotebook(storage, rizinbin string) *Notebook {
 	uniques := []string{}
 	prefix := path.Join(storage) + string(os.PathSeparator)
 	suffix := string(os.PathSeparator) + PAGE_FILE
+
+	cmds, err := RizinCommands(rizinbin)
+	if err != nil {
+		panic(err)
+	}
 
 	files, err := filepath.Glob(path.Join(storage, "*", PAGE_FILE))
 	if err != nil {
@@ -95,6 +101,7 @@ func NewNotebook(storage, rizinbin string) *Notebook {
 		pipes:   map[string]*Rizin{},
 		jsvm:    jsvm,
 		rizin:   rizinbin,
+		cmds:    cmds,
 	}
 }
 

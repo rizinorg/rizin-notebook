@@ -7,29 +7,43 @@
     <link rel="stylesheet" href="{{ $root }}static/spectre.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type="text/css">
-        @font-face { font-family: 'Inconsolata'; src: URL('{{ .root }}static/inconsolata.ttf') format('truetype'); }
-        .spacing-top { margin: 3px 0px 0px 0px !important; }
-        .spacing-left { margin: 0px 3px 0px 0px !important; }
-        .align-center { text-align: center; }
-        .navbar-fixed-height { height: 32px; }
-        .icon-height { height: 20px; }
-        .title-margin { margin-top: auto; margin-bottom: auto; margin-right: 10px; }
-        .md-heigh { height: 64px; }
-        .pipe { color: #e85600; border-color: #e85600; }
-        .pipe:hover { background: #e85600; border-color: #e85600; }
-        iframe { border: 0px; width: 100%; height: 100% }
-        .resizer { display: flex; margin: 0; padding: 0; resize: vertical; overflow: hidden }
-        .resizer > .resized { flex-grow: 1; margin: 0; padding: 0; border: 0 }
-        .syntax-menu { right: 35px; }
-        .align-right { text-align: right; }
-        textarea {
-          margin: 5px;
-          font-family: Inconsolata;
-          background-color: inherit;
-          color: inherit;
-          line-height: 8px;
-          resize: none;
-        }
+      @font-face { font-family: 'Inconsolata'; src: URL('{{ .root }}static/inconsolata.ttf') format('truetype'); }
+      .spacing-top { margin: 3px 0px 0px 0px !important; }
+      .spacing-left { margin: 0px 3px 0px 0px !important; }
+      .align-center { text-align: center; }
+      .navbar-fixed-height { height: 32px; }
+      .icon-height { height: 20px; }
+      .title-margin { margin-top: auto; margin-bottom: auto; margin-right: 10px; }
+      .md-heigh { height: 64px; }
+      .pipe { color: #e85600; border-color: #e85600; }
+      .pipe:hover { background: #e85600; border-color: #e85600; }
+      iframe { border: 0px; width: 100%; height: 100% }
+      .resizer { display: flex; margin: 0; padding: 0; resize: vertical; overflow: hidden }
+      .resizer > .resized { flex-grow: 1; margin: 0; padding: 0; border: 0 }
+      .syntax-menu { right: 35px; }
+      .align-right { text-align: right; }
+      textarea {
+        margin: 5px;
+        font-family: Inconsolata;
+        background-color: inherit;
+        color: inherit;
+        line-height: 8px;
+        resize: none;
+      }
+      .button-help { width: 32px; float: left; }
+      .command-input { margin: 0px 0px 0px 36px; display: flex; width: calc(100% - 36px); min-width: 0; }
+      .modal-box { width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); }
+      .modal-search { width: 80%; height: 80%; margin: 10px; }
+      .modal-results { width: 100%; max-height: 500px; position: initial; overflow-y: scroll; overflow-x: hidden; }
+      .modal-results li { -webkit-user-select: text !important; -ms-user-select: text !important; user-select: text !important; }
+      .modal-name-big { font-size: 20px; }
+      .modal-name { color: #1447e6; font-weight: bold; font-family: Inconsolata; }
+      .modal-args { color: #178236; font-style: italic; font-family: Inconsolata; }
+      .modal-detail { width: 100%; margin: 10px 0px 0px 0px; }
+      .modal-entry { width: 100%; margin: 0px 0px 0px 20px; list-style: none; }
+      .modal-entry-text { min-width: 200px; display: inline-block; }
+      .modal-searchbar { width: calc(100% - 36px); }
+      .modal-close { float: right; width: 32px; }
     </style>
     <script>
       function handle(obj) {
@@ -108,6 +122,114 @@
           event.preventDefault();
         }
       }
+{{ if $pipe }}
+      var rizinCmds = JSON.parse({{ .cmds | stringify }});
+      var rizinCmdsList = Object.keys(rizinCmds);
+      function openCmdHelp() {
+        var modal = document.getElementById("command-help");
+        modal.className += " active";
+        var search = document.getElementById("search-focus");
+        search.focus();
+      }
+      function closeCmdHelp() {
+        var modal = document.getElementById("command-help");
+        modal.className = modal.className.replace(" active", "");
+      }
+      function cmdAsText(parent, command) {
+        var details = (command.details || []);
+        var element = document.createElement('span');
+        element.className = "modal-name modal-name-big";
+        element.textContent = command.cmd;
+        parent.appendChild(element);
+
+        element = document.createElement('span');
+        element.className = "modal-args modal-name-big";
+        element.textContent = " " + command.args_str;
+        parent.appendChild(element);
+
+        if ((command.summary || "") != "") {
+          element = document.createElement('div');
+          element.textContent = command.summary.replace(".", ".\n");
+          parent.appendChild(element);
+        }
+        if ((command.description || "") != "") {
+          element = document.createElement('div');
+          element.textContent = command.description.replace(".", ".\n");
+          parent.appendChild(element);
+        }
+        for (var i = 0; i < details.length; i++) {
+          var entries = (details[i].entries || []);
+          var detail = document.createElement('ul');
+          detail.className = "modal-detail";
+          detail.textContent = details[i].name;
+          parent.appendChild(detail);
+          for (var i = 0; i < entries.length; i++) {
+            var entry = document.createElement('li');
+            entry.className = "modal-entry";
+            detail.appendChild(entry);
+
+            var text = document.createElement('span');
+            text.className = "modal-entry-text";
+            entry.appendChild(text);
+
+            if ((entries[i].text || "").length > 0) {
+              element = document.createElement('span');
+              element.className = "modal-name";
+              element.textContent = entries[i].text;
+              text.appendChild(element);
+            }
+
+            if ((entries[i].arg_str || "").length > 0) {
+              element = document.createElement('span');
+              element.className = "modal-args";
+              element.textContent = entries[i].arg_str;
+              text.appendChild(element);
+            }
+
+            if ((entries[i].comment || "").length > 0) {
+              element = document.createElement('span');
+              element.style.display = "inline-block";
+              element.textContent = " # " + entries[i].comment;
+              entry.appendChild(element);
+            }
+          }
+        }
+      }
+      function findCmd(element) {
+        var dropdown = document.getElementById("dropdown-results");
+        var results = document.getElementById("search-results");
+        results.innerHTML = "";
+        var tokens = element.value.split(/\s+/);
+        for (var i = 0, count = 0; i < rizinCmdsList.length; i++) {
+          var key = rizinCmdsList[i];
+          var descr = rizinCmds[key].description || "";
+          var summr = rizinCmds[key].summary || "";
+          var found = true;
+          for (var j = 0; j < tokens.length; j++) {
+            if (key.indexOf(tokens[j]) < 0 && descr.indexOf(tokens[j]) < 0 && summr.indexOf(tokens[j]) < 0) {
+              found = false;
+              break;
+            }
+          }
+          if (!found) {
+            continue;
+          }
+          var li = document.createElement('li');
+          if (count > 0) {
+            li.className = "divider";
+            results.appendChild(li);
+            li = document.createElement('li');
+          }
+          li.className = "menu-item";
+          cmdAsText(li, rizinCmds[key]);
+          results.appendChild(li);
+          count++;
+        }
+        if (dropdown.className.indexOf(" active") < 0) {
+          dropdown.className += " active";
+        }
+      }
+{{ end }}
     </script>
   </head>
 <body>
@@ -169,10 +291,27 @@
 {{ if $pipe }}
             &nbsp;
             <a class="btn" href="#" onclick="newcm()"><i class="icon icon-resize-horiz">Command Line</i> Command Line</a>
+            &nbsp;
+            <a class="btn" href="#" onclick="openCmdHelp()"><i class="icon icon-search">Help</i> Help</a>
 {{ end }}
           </div>
         </div>
       </div>
+{{ if $pipe }}
+      <div id="command-help" class="modal modal-box">
+        <div class="modal-content modal-search" onclick="" style="z-index: 999999;">
+          <div class="modal-body">
+            <div class="content">
+              <div class="dropdown" id="dropdown-results" style="width: 100%; height: 100%; max-height: 500px;">
+                <button class="btn btn-primary modal-close" onclick="closeCmdHelp()">&times;</button>
+                <input class="form-input modal-searchbar" id="search-focus" onchange="findCmd(this);" onkeypress="findCmd(this);" onpaste="findCmd(this);" oninput="findCmd(this);" value="" placeholder="Search for a command or keyword in a description"/>
+                <ul class="modal-results menu active" id="search-results"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+{{ end }}
     </section>
   </section>
 </body>
