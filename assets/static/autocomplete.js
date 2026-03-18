@@ -49,12 +49,6 @@
     return _fetching;
   }
 
-  function escapeHtml(str) {
-    var d = document.createElement("div");
-    d.textContent = str;
-    return d.innerHTML;
-  }
-
   /* ── Attach autocomplete to an input ────────────────── */
 
   function attach(input, options) {
@@ -96,27 +90,35 @@
         hide();
         return;
       }
-      var html = "";
+      var fragment = document.createDocumentFragment();
       for (var i = 0; i < matches.length; i++) {
         var m = matches[i];
         var summ = m.cmd.summary || m.cmd.description || "";
         if (summ.length > 60) summ = summ.substring(0, 57) + "…";
-        html +=
-          '<div class="nb-ac-item" data-idx="' +
-          i +
-          '">' +
-          '<span class="nb-ac-cmd">' +
-          escapeHtml(m.name) +
-          "</span>" +
-          '<span class="nb-ac-args">' +
-          escapeHtml(m.cmd.args_str || "") +
-          "</span>" +
-          (summ
-            ? '<span class="nb-ac-summ">' + escapeHtml(summ) + "</span>"
-            : "") +
-          "</div>";
+        var item = document.createElement("div");
+        item.className = "nb-ac-item";
+        item.setAttribute("data-idx", String(i));
+
+        var cmd = document.createElement("span");
+        cmd.className = "nb-ac-cmd";
+        cmd.textContent = m.name;
+        item.appendChild(cmd);
+
+        var args = document.createElement("span");
+        args.className = "nb-ac-args";
+        args.textContent = m.cmd.args_str || "";
+        item.appendChild(args);
+
+        if (summ) {
+          var summary = document.createElement("span");
+          summary.className = "nb-ac-summ";
+          summary.textContent = summ;
+          item.appendChild(summary);
+        }
+
+        fragment.appendChild(item);
       }
-      dropdown.innerHTML = html;
+      dropdown.replaceChildren(fragment);
       dropdown.style.display = "block";
       isOpen = true;
       notifyResize();
@@ -125,7 +127,7 @@
     function hide() {
       if (!isOpen) return;
       dropdown.style.display = "none";
-      dropdown.innerHTML = "";
+      dropdown.replaceChildren();
       items = [];
       selIdx = -1;
       isOpen = false;

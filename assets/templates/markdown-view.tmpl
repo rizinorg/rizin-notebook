@@ -19,7 +19,7 @@
     <i class="icon icon-edit">Code</i> Edit
   </a>
   <div class="markdown-container" id="markdown-container" >
-    <textarea style="display: none;" name="md-container" id="md-container" cols="30" rows="10">{{ .html }}</textarea>
+    <textarea style="display: none;" name="md-container" id="md-container" cols="30" rows="10">{{ .raw }}</textarea>
   </div>
   <script src="{{ .root }}static/simplemde.min.js"></script>
   <script>
@@ -28,13 +28,18 @@
         element: document.getElementById('md-container'),
         autoDownloadFontAwesome: false,
         spellChecker: false,
+        toolbar: false,
         status: false,
         indentWithTabs: false,
         promptURLs: true,
         tabSize: 4,
     });
     var md = smde.value();
-    document.getElementById('markdown-container').innerHTML = smde.markdown(md);
+    NotebookSafeMarkdown.renderInto(
+      document.getElementById('markdown-container'),
+      md,
+      smde
+    );
     setTimeout(function() {
       var h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
       if (window.parent !== window) window.parent.postMessage({type:'iframe-resize',height:h},'*');

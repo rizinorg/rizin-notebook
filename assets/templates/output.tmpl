@@ -56,7 +56,7 @@
   </style>
 </head>
 <body>
-  <div id="output-root">{{ .output | raw }}</div>
+  <div id="output-root">{{ .output }}</div>
   <script>
   (function(){
     var rawOutput = {{ .raw_output | stringify }};

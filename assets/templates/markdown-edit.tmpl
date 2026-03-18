@@ -65,7 +65,8 @@
     editor.focus();
   }
   function editor() {
-    var simplemde = new SimpleMDE({
+    var simplemde;
+    simplemde = new SimpleMDE({
         element: document.getElementById("input-body"),
         autofocus: true,
         hideIcons: ["side-by-side", "fullscreen", "guide"],
@@ -73,6 +74,9 @@
         spellChecker: false,
         forceSync: true,
         indentWithTabs: false,
+        previewRender: function(plainText) {
+          return NotebookSafeMarkdown.renderToHTML(plainText, simplemde);
+        },
         promptURLs: true,
         tabSize: 4,
     });

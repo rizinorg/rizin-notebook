@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"strings"
 	"time"
@@ -63,7 +64,7 @@ func serverAddOutput(output *gin.RouterGroup) {
 
 		c.HTML(200, "output.tmpl", gin.H{
 			"root":       webroot,
-			"output":     string(htmlOutput),
+			"output":     template.HTML(string(htmlOutput)),
 			"raw_output": visibleOutput,
 			"lines":      lines,
 			"words":      words,

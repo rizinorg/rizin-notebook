@@ -52,7 +52,7 @@ func serverAddMarkdown(markdown *gin.RouterGroup) {
 		c.HTML(200, "markdown-view.tmpl", gin.H{
 			"root": webroot,
 			"path": "/" + unique + "/" + eunique,
-			"html": content,
+			"raw":  content,
 		})
 	})
 

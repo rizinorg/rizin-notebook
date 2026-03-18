@@ -173,6 +173,306 @@
     document.addEventListener("keydown", handler, true);
   }
 
+  var ALLOWED_MARKDOWN_TAGS = {
+    a: true,
+    b: true,
+    blockquote: true,
+    br: true,
+    code: true,
+    del: true,
+    details: true,
+    div: true,
+    em: true,
+    h1: true,
+    h2: true,
+    h3: true,
+    h4: true,
+    h5: true,
+    h6: true,
+    hr: true,
+    i: true,
+    img: true,
+    input: true,
+    ins: true,
+    kbd: true,
+    li: true,
+    ol: true,
+    p: true,
+    pre: true,
+    samp: true,
+    span: true,
+    strike: true,
+    strong: true,
+    sub: true,
+    summary: true,
+    sup: true,
+    table: true,
+    tbody: true,
+    td: true,
+    th: true,
+    thead: true,
+    tr: true,
+    u: true,
+    ul: true,
+  };
+
+  var BLOCKED_MARKDOWN_TAGS = {
+    audio: true,
+    base: true,
+    button: true,
+    canvas: true,
+    embed: true,
+    form: true,
+    iframe: true,
+    link: true,
+    math: true,
+    meta: true,
+    object: true,
+    option: true,
+    script: true,
+    select: true,
+    source: true,
+    style: true,
+    svg: true,
+    textarea: true,
+    video: true,
+  };
+
+  var ALIGN_VALUES = {
+    center: true,
+    justify: true,
+    left: true,
+    right: true,
+  };
+
+  var CODE_CLASS_RE =
+    /^(?:lang|language)-[A-Za-z0-9_-]+(?:\s+(?:lang|language)-[A-Za-z0-9_-]+)*$/;
+
+  function emptyFragment() {
+    return document.createDocumentFragment();
+  }
+
+  function normalizeUrlCandidate(url) {
+    return String(url || "").replace(/[\u0000-\u001F\u007F-\u009F\s]+/g, "");
+  }
+
+  function sanitizeUrl(url, options) {
+    var value = String(url || "").trim();
+    if (!value) {
+      return "";
+    }
+    if (value.charAt(0) === "#") {
+      return value;
+    }
+
+    var normalized = normalizeUrlCandidate(value).toLowerCase();
+    if (
+      normalized.indexOf("javascript:") === 0 ||
+      normalized.indexOf("vbscript:") === 0
+    ) {
+      return "";
+    }
+    if (normalized.indexOf("data:") === 0) {
+      if (
+        options &&
+        options.allowDataImage &&
+        /^data:image\/(?:bmp|gif|jpe?g|png|webp);/i.test(value)
+      ) {
+        return value;
+      }
+      return "";
+    }
+    if (value.indexOf("//") === 0) {
+      return value;
+    }
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(normalized)) {
+      var scheme = normalized.split(":", 1)[0];
+      if (
+        scheme === "ftp" ||
+        scheme === "http" ||
+        scheme === "https" ||
+        scheme === "mailto"
+      ) {
+        return value;
+      }
+      return "";
+    }
+    return value;
+  }
+
+  function applyTextAlign(target, value) {
+    var normalized = String(value || "").trim().toLowerCase();
+    if (ALIGN_VALUES[normalized]) {
+      target.style.textAlign = normalized;
+    }
+  }
+
+  function copyTextAlign(source, target) {
+    applyTextAlign(target, source.getAttribute("align"));
+
+    var style = source.getAttribute("style");
+    if (!style) {
+      return;
+    }
+
+    style.split(";").forEach(function (declaration) {
+      var parts = declaration.split(":");
+      if (parts.length < 2) {
+        return;
+      }
+      if (parts[0].trim().toLowerCase() === "text-align") {
+        applyTextAlign(target, parts.slice(1).join(":"));
+      }
+    });
+  }
+
+  function sanitizeChildren(node) {
+    var fragment = document.createDocumentFragment();
+    for (var child = node.firstChild; child; child = child.nextSibling) {
+      fragment.appendChild(sanitizeNode(child));
+    }
+    return fragment;
+  }
+
+  function sanitizeImage(source) {
+    var src = sanitizeUrl(source.getAttribute("src"), { allowDataImage: true });
+    if (!src) {
+      return emptyFragment();
+    }
+
+    var img = document.createElement("img");
+    img.setAttribute("src", src);
+
+    if (source.hasAttribute("alt")) {
+      img.setAttribute("alt", source.getAttribute("alt"));
+    }
+    if (source.hasAttribute("title")) {
+      img.setAttribute("title", source.getAttribute("title"));
+    }
+
+    return img;
+  }
+
+  function sanitizeInput(source) {
+    var type = String(source.getAttribute("type") || "").toLowerCase();
+    if (type !== "checkbox") {
+      return emptyFragment();
+    }
+
+    var input = document.createElement("input");
+    input.setAttribute("type", "checkbox");
+    input.setAttribute("disabled", "disabled");
+    input.disabled = true;
+
+    if (source.hasAttribute("checked")) {
+      input.setAttribute("checked", "checked");
+      input.checked = true;
+    }
+
+    return input;
+  }
+
+  function sanitizeElement(source) {
+    var tag = source.tagName.toLowerCase();
+    if (BLOCKED_MARKDOWN_TAGS[tag]) {
+      return emptyFragment();
+    }
+    if (tag === "img") {
+      return sanitizeImage(source);
+    }
+    if (tag === "input") {
+      return sanitizeInput(source);
+    }
+    if (!ALLOWED_MARKDOWN_TAGS[tag]) {
+      return sanitizeChildren(source);
+    }
+
+    var element = document.createElement(tag);
+
+    if (tag === "a") {
+      var href = sanitizeUrl(source.getAttribute("href"));
+      if (href) {
+        element.setAttribute("href", href);
+      }
+      if (source.hasAttribute("title")) {
+        element.setAttribute("title", source.getAttribute("title"));
+      }
+    } else if ((tag === "code" || tag === "pre") && source.className) {
+      var className = String(source.className || "").trim();
+      if (CODE_CLASS_RE.test(className)) {
+        element.className = className;
+      }
+    } else if (tag === "ol" && source.hasAttribute("start")) {
+      var start = parseInt(source.getAttribute("start"), 10);
+      if (!isNaN(start) && start > 0) {
+        element.setAttribute("start", String(start));
+      }
+    } else if (tag === "details" && source.hasAttribute("open")) {
+      element.setAttribute("open", "open");
+    }
+
+    if (tag === "td" || tag === "th") {
+      copyTextAlign(source, element);
+    }
+
+    if (tag !== "br" && tag !== "hr") {
+      element.appendChild(sanitizeChildren(source));
+    }
+
+    return element;
+  }
+
+  function sanitizeNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return document.createTextNode(node.data || "");
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return emptyFragment();
+    }
+    return sanitizeElement(node);
+  }
+
+  function buildSafeFragment(html) {
+    var parser = new DOMParser();
+    var parsed = parser.parseFromString(
+      "<!doctype html><body>" + String(html || "") + "</body>",
+      "text/html",
+    );
+    return sanitizeChildren(parsed.body);
+  }
+
+  function renderMarkdown(markdownText, renderer) {
+    if (renderer && typeof renderer.markdown === "function") {
+      return renderer.markdown(markdownText || "");
+    }
+    return String(markdownText || "");
+  }
+
+  function fragmentToHTML(fragment) {
+    var container = document.createElement("div");
+    container.appendChild(fragment);
+    return container.innerHTML;
+  }
+
+  global.NotebookSafeMarkdown = {
+    buildFragment: function (markdownText, renderer) {
+      return buildSafeFragment(renderMarkdown(markdownText, renderer));
+    },
+    renderInto: function (container, markdownText, renderer) {
+      if (!container) {
+        return;
+      }
+      container.replaceChildren(
+        buildSafeFragment(renderMarkdown(markdownText, renderer)),
+      );
+    },
+    renderToHTML: function (markdownText, renderer) {
+      return fragmentToHTML(
+        buildSafeFragment(renderMarkdown(markdownText, renderer)),
+      );
+    },
+  };
+
   global.NotebookShortcuts = {
     bind: bind,
     annotate: annotate,
