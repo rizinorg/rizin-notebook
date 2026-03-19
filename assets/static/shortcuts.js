@@ -173,71 +173,6 @@
     document.addEventListener("keydown", handler, true);
   }
 
-  var ALLOWED_MARKDOWN_TAGS = {
-    a: true,
-    b: true,
-    blockquote: true,
-    br: true,
-    code: true,
-    del: true,
-    details: true,
-    div: true,
-    em: true,
-    h1: true,
-    h2: true,
-    h3: true,
-    h4: true,
-    h5: true,
-    h6: true,
-    hr: true,
-    i: true,
-    img: true,
-    input: true,
-    ins: true,
-    kbd: true,
-    li: true,
-    ol: true,
-    p: true,
-    pre: true,
-    samp: true,
-    span: true,
-    strike: true,
-    strong: true,
-    sub: true,
-    summary: true,
-    sup: true,
-    table: true,
-    tbody: true,
-    td: true,
-    th: true,
-    thead: true,
-    tr: true,
-    u: true,
-    ul: true,
-  };
-
-  var BLOCKED_MARKDOWN_TAGS = {
-    audio: true,
-    base: true,
-    button: true,
-    canvas: true,
-    embed: true,
-    form: true,
-    iframe: true,
-    link: true,
-    math: true,
-    meta: true,
-    object: true,
-    option: true,
-    script: true,
-    select: true,
-    source: true,
-    style: true,
-    svg: true,
-    textarea: true,
-    video: true,
-  };
-
   var ALIGN_VALUES = {
     center: true,
     justify: true,
@@ -247,6 +182,15 @@
 
   var CODE_CLASS_RE =
     /^(?:lang|language)-[A-Za-z0-9_-]+(?:\s+(?:lang|language)-[A-Za-z0-9_-]+)*$/;
+
+  var HTML_ENTITY_MAP = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    nbsp: "\u00a0",
+    quot: '"',
+  };
 
   function emptyFragment() {
     return document.createDocumentFragment();
@@ -326,150 +270,550 @@
     });
   }
 
-  function sanitizeChildren(node) {
-    var fragment = document.createDocumentFragment();
-    for (var child = node.firstChild; child; child = child.nextSibling) {
-      fragment.appendChild(sanitizeNode(child));
+  function appendNode(target, node) {
+    if (target && node) {
+      target.appendChild(node);
+    }
+  }
+
+  function decodeEntities(text) {
+    return String(text || "").replace(
+      /&(?:#(\d+)|#x([0-9a-fA-F]+)|([A-Za-z][A-Za-z0-9]+));/g,
+      function (match, dec, hex, named) {
+        var value;
+        if (dec) {
+          value = parseInt(dec, 10);
+        } else if (hex) {
+          value = parseInt(hex, 16);
+        } else if (named) {
+          if (!Object.prototype.hasOwnProperty.call(HTML_ENTITY_MAP, named)) {
+            return match;
+          }
+          return HTML_ENTITY_MAP[named];
+        }
+        if (!isFinite(value) || value < 0 || value > 1114111) {
+          return match;
+        }
+        try {
+          return String.fromCodePoint(value);
+        } catch (error) {
+          return match;
+        }
+      },
+    );
+  }
+
+  function appendDecodedText(target, text) {
+    if (text) {
+      appendNode(target, document.createTextNode(decodeEntities(text)));
+    }
+  }
+
+  function appendLiteralText(target, text) {
+    if (text) {
+      appendNode(target, document.createTextNode(String(text)));
+    }
+  }
+
+  function createMarkdownOptions(renderer) {
+    var options = {
+      breaks: true,
+      gfm: true,
+      pedantic: false,
+      smartypants: false,
+      tables: true,
+    };
+    var config =
+      renderer &&
+      renderer.options &&
+      renderer.options.renderingConfig;
+    if (config && config.singleLineBreaks === false) {
+      options.breaks = false;
+    }
+    return options;
+  }
+
+  function getMarkedEngine(renderer) {
+    if (
+      renderer &&
+      renderer.constructor &&
+      renderer.constructor.marked
+    ) {
+      return renderer.constructor.marked;
+    }
+    if (global.SimpleMDE && global.SimpleMDE.marked) {
+      return global.SimpleMDE.marked;
+    }
+    return null;
+  }
+
+  function getMarkdownTokens(markdownText, renderer) {
+    var marked = getMarkedEngine(renderer);
+    var options = createMarkdownOptions(renderer);
+    var lexer = marked && (marked.lexer || (marked.Lexer && marked.Lexer.lex));
+    if (typeof lexer !== "function") {
+      return null;
+    }
+    var tokens = lexer(String(markdownText || ""), options);
+    if (tokens) {
+      tokens.marked = marked;
+      tokens.options = options;
+    }
+    return tokens;
+  }
+
+  function getInlineRules(marked, options) {
+    var inlineLexer = marked && marked.InlineLexer;
+    if (!inlineLexer || !inlineLexer.rules) {
+      return null;
+    }
+    if (options.gfm) {
+      return options.breaks ? inlineLexer.rules.breaks : inlineLexer.rules.gfm;
+    }
+    if (options.pedantic) {
+      return inlineLexer.rules.pedantic;
+    }
+    return inlineLexer.rules.normal;
+  }
+
+  function createInlineContext(links, options, marked) {
+    return {
+      inLink: false,
+      links: links || {},
+      marked: marked,
+      options: options || {},
+      rules: getInlineRules(marked, options || {}),
+    };
+  }
+
+  function cloneInlineContext(context, inLink) {
+    return {
+      inLink: !!inLink,
+      links: context.links,
+      marked: context.marked,
+      options: context.options,
+      rules: context.rules,
+    };
+  }
+
+  function createSafeLink(href, title, content) {
+    var safeHref = sanitizeUrl(href);
+    if (!safeHref) {
+      return content;
+    }
+    var link = document.createElement("a");
+    link.setAttribute("href", safeHref);
+    if (title) {
+      link.setAttribute("title", title);
+    }
+    appendNode(link, content);
+    return link;
+  }
+
+  function createSafeImage(src, title, altText) {
+    var safeSrc = sanitizeUrl(src, { allowDataImage: true });
+    if (!safeSrc) {
+      return document.createTextNode(altText || "");
+    }
+    var image = document.createElement("img");
+    image.setAttribute("src", safeSrc);
+    if (altText) {
+      image.setAttribute("alt", altText);
+    }
+    if (title) {
+      image.setAttribute("title", title);
+    }
+    return image;
+  }
+
+  function createInlineElement(tagName, content) {
+    var element = document.createElement(tagName);
+    appendNode(element, content);
+    return element;
+  }
+
+  function createBlockElement(tagName, content) {
+    var element = document.createElement(tagName);
+    appendNode(element, content);
+    return element;
+  }
+
+  function createLiteralBlock(text) {
+    var value = String(text || "");
+    if (value.indexOf("\n") >= 0) {
+      var pre = document.createElement("pre");
+      pre.appendChild(document.createTextNode(value));
+      return pre;
+    }
+    return createBlockElement("p", document.createTextNode(value));
+  }
+
+  function inlineContextForTokens(tokens) {
+    return createInlineContext(
+      (tokens && tokens.links) || {},
+      (tokens && tokens.options) || {},
+      tokens && tokens.marked,
+    );
+  }
+
+  function collectTextTokens(firstToken, tokens, state) {
+    var text = String((firstToken && firstToken.text) || "");
+    while (
+      state.index < tokens.length &&
+      tokens[state.index] &&
+      tokens[state.index].type === "text"
+    ) {
+      text += "\n" + String(tokens[state.index].text || "");
+      state.index += 1;
+    }
+    return text;
+  }
+
+  function renderInline(text, context) {
+    var source = String(text || "");
+    var rules = context && context.rules;
+    var fragment = emptyFragment();
+    if (!rules) {
+      appendDecodedText(fragment, source);
+      return fragment;
+    }
+
+    while (source) {
+      var match;
+      var label;
+      var definition;
+      if ((match = rules.escape.exec(source))) {
+        source = source.substring(match[0].length);
+        appendDecodedText(fragment, match[1]);
+        continue;
+      }
+      if ((match = rules.autolink.exec(source))) {
+        source = source.substring(match[0].length);
+        if (match[2] === "@") {
+          label =
+            match[1].charAt(6) === ":"
+              ? match[1].substring(7)
+              : match[1];
+          appendNode(
+            fragment,
+            createSafeLink(
+              "mailto:" + label,
+              null,
+              document.createTextNode(label),
+            ),
+          );
+        } else {
+          label = match[1];
+          appendNode(
+            fragment,
+            createSafeLink(label, null, document.createTextNode(label)),
+          );
+        }
+        continue;
+      }
+      if (!context.inLink && (match = rules.url.exec(source))) {
+        source = source.substring(match[0].length);
+        label = match[0];
+        appendNode(
+          fragment,
+          createSafeLink(label, null, document.createTextNode(label)),
+        );
+        continue;
+      }
+      if ((match = rules.tag.exec(source))) {
+        source = source.substring(match[0].length);
+        appendLiteralText(fragment, match[0]);
+        continue;
+      }
+      if ((match = rules.link.exec(source))) {
+        source = source.substring(match[0].length);
+        if (match[0].charAt(0) === "!") {
+          appendNode(
+            fragment,
+            createSafeImage(match[2], match[3], decodeEntities(match[1] || "")),
+          );
+        } else {
+          appendNode(
+            fragment,
+            createSafeLink(
+              match[2],
+              match[3],
+              renderInline(match[1], cloneInlineContext(context, true)),
+            ),
+          );
+        }
+        continue;
+      }
+      match = rules.reflink.exec(source) || rules.nolink.exec(source);
+      if (match) {
+        source = source.substring(match[0].length);
+        label = (match[2] || match[1] || "").replace(/\s+/g, " ");
+        definition = context.links[String(label).toLowerCase()];
+        if (!definition || !definition.href) {
+          appendLiteralText(fragment, match[0].charAt(0));
+          source = match[0].substring(1) + source;
+          continue;
+        }
+        if (match[0].charAt(0) === "!") {
+          appendNode(
+            fragment,
+            createSafeImage(
+              definition.href,
+              definition.title,
+              decodeEntities(match[1] || ""),
+            ),
+          );
+        } else {
+          appendNode(
+            fragment,
+            createSafeLink(
+              definition.href,
+              definition.title,
+              renderInline(match[1], cloneInlineContext(context, true)),
+            ),
+          );
+        }
+        continue;
+      }
+      if ((match = rules.strong.exec(source))) {
+        source = source.substring(match[0].length);
+        appendNode(
+          fragment,
+          createInlineElement(
+            "strong",
+            renderInline(
+              match[2] || match[1],
+              cloneInlineContext(context, context.inLink),
+            ),
+          ),
+        );
+        continue;
+      }
+      if ((match = rules.em.exec(source))) {
+        source = source.substring(match[0].length);
+        appendNode(
+          fragment,
+          createInlineElement(
+            "em",
+            renderInline(
+              match[2] || match[1],
+              cloneInlineContext(context, context.inLink),
+            ),
+          ),
+        );
+        continue;
+      }
+      if ((match = rules.code.exec(source))) {
+        source = source.substring(match[0].length);
+        var inlineCode = document.createElement("code");
+        inlineCode.textContent = match[2] || "";
+        appendNode(fragment, inlineCode);
+        continue;
+      }
+      if ((match = rules.br.exec(source))) {
+        source = source.substring(match[0].length);
+        appendNode(fragment, document.createElement("br"));
+        continue;
+      }
+      if ((match = rules.del.exec(source))) {
+        source = source.substring(match[0].length);
+        appendNode(
+          fragment,
+          createInlineElement(
+            "del",
+            renderInline(
+              match[1],
+              cloneInlineContext(context, context.inLink),
+            ),
+          ),
+        );
+        continue;
+      }
+      if ((match = rules.text.exec(source))) {
+        source = source.substring(match[0].length);
+        appendDecodedText(fragment, match[0]);
+        continue;
+      }
+      appendLiteralText(fragment, source.charAt(0));
+      source = source.substring(1);
+    }
+
+    return fragment;
+  }
+
+  function renderTextParagraph(text, tokens) {
+    return createBlockElement("p", renderInline(text, inlineContextForTokens(tokens)));
+  }
+
+  function renderHeading(token, tokens) {
+    var depth = parseInt(token.depth, 10);
+    if (isNaN(depth) || depth < 1 || depth > 6) {
+      depth = 1;
+    }
+    return createBlockElement(
+      "h" + String(depth),
+      renderInline(token.text, inlineContextForTokens(tokens)),
+    );
+  }
+
+  function renderCodeBlock(token) {
+    var pre = document.createElement("pre");
+    var code = document.createElement("code");
+    if (token.lang) {
+      var className = "lang-" + String(token.lang).trim();
+      if (CODE_CLASS_RE.test(className)) {
+        code.className = className;
+      }
+    }
+    code.textContent = token.text || "";
+    pre.appendChild(code);
+    return pre;
+  }
+
+  function renderTable(token, tokens) {
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    var tbody = document.createElement("tbody");
+    var row = document.createElement("tr");
+    var inlineContext = inlineContextForTokens(tokens);
+    var i;
+    var j;
+    for (i = 0; i < token.header.length; i++) {
+      var th = document.createElement("th");
+      appendNode(th, renderInline(token.header[i], cloneInlineContext(inlineContext, false)));
+      applyTextAlign(th, token.align && token.align[i]);
+      row.appendChild(th);
+    }
+    thead.appendChild(row);
+    table.appendChild(thead);
+    for (i = 0; i < token.cells.length; i++) {
+      row = document.createElement("tr");
+      for (j = 0; j < token.cells[i].length; j++) {
+        var td = document.createElement("td");
+        appendNode(td, renderInline(token.cells[i][j], cloneInlineContext(inlineContext, false)));
+        applyTextAlign(td, token.align && token.align[j]);
+        row.appendChild(td);
+      }
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    return table;
+  }
+
+  function renderListItem(loose, tokens, state) {
+    var item = document.createElement("li");
+    while (state.index < tokens.length) {
+      var token = tokens[state.index++];
+      if (!token || token.type === "list_item_end") {
+        break;
+      }
+      if (token.type === "space") {
+        continue;
+      }
+      if (!loose && token.type === "text") {
+        appendNode(
+          item,
+          renderInline(
+            collectTextTokens(token, tokens, state),
+            inlineContextForTokens(tokens),
+          ),
+        );
+        continue;
+      }
+      appendNode(item, renderBlockToken(token, tokens, state));
+    }
+    return item;
+  }
+
+  function renderList(token, tokens, state) {
+    var list = document.createElement(token.ordered ? "ol" : "ul");
+    while (state.index < tokens.length) {
+      var itemToken = tokens[state.index++];
+      if (!itemToken) {
+        break;
+      }
+      if (itemToken.type === "list_end") {
+        break;
+      }
+      if (
+        itemToken.type !== "list_item_start" &&
+        itemToken.type !== "loose_item_start"
+      ) {
+        continue;
+      }
+      list.appendChild(
+        renderListItem(itemToken.type === "loose_item_start", tokens, state),
+      );
+    }
+    return list;
+  }
+
+  function renderBlockToken(token, tokens, state) {
+    switch (token.type) {
+      case "space":
+        return emptyFragment();
+      case "hr":
+        return document.createElement("hr");
+      case "heading":
+        return renderHeading(token, tokens);
+      case "code":
+        return renderCodeBlock(token);
+      case "table":
+        return renderTable(token, tokens);
+      case "blockquote_start":
+        return createBlockElement(
+          "blockquote",
+          renderBlocks(tokens, state, "blockquote_end"),
+        );
+      case "list_start":
+        return renderList(token, tokens, state);
+      case "html":
+        return createLiteralBlock(token.text);
+      case "paragraph":
+        return renderTextParagraph(token.text, tokens);
+      case "text":
+        return renderTextParagraph(collectTextTokens(token, tokens, state), tokens);
+      default:
+        return createLiteralBlock(token.text || "");
+    }
+  }
+
+  function renderBlocks(tokens, state, stopType) {
+    var fragment = emptyFragment();
+    while (state.index < tokens.length) {
+      var token = tokens[state.index++];
+      if (!token) {
+        break;
+      }
+      if (stopType && token.type === stopType) {
+        break;
+      }
+      appendNode(fragment, renderBlockToken(token, tokens, state));
     }
     return fragment;
   }
 
-  function sanitizeImage(source) {
-    var src = sanitizeUrl(source.getAttribute("src"), { allowDataImage: true });
-    if (!src) {
-      return emptyFragment();
+  function buildMarkdownFragment(markdownText, renderer) {
+    var tokens = getMarkdownTokens(markdownText, renderer);
+    if (!tokens) {
+      var fallback = document.createElement("pre");
+      fallback.textContent = String(markdownText || "");
+      var fragment = emptyFragment();
+      fragment.appendChild(fallback);
+      return fragment;
     }
-
-    var img = document.createElement("img");
-    img.setAttribute("src", src);
-
-    if (source.hasAttribute("alt")) {
-      img.setAttribute("alt", source.getAttribute("alt"));
-    }
-    if (source.hasAttribute("title")) {
-      img.setAttribute("title", source.getAttribute("title"));
-    }
-
-    return img;
-  }
-
-  function sanitizeInput(source) {
-    var type = String(source.getAttribute("type") || "").toLowerCase();
-    if (type !== "checkbox") {
-      return emptyFragment();
-    }
-
-    var input = document.createElement("input");
-    input.setAttribute("type", "checkbox");
-    input.setAttribute("disabled", "disabled");
-    input.disabled = true;
-
-    if (source.hasAttribute("checked")) {
-      input.setAttribute("checked", "checked");
-      input.checked = true;
-    }
-
-    return input;
-  }
-
-  function sanitizeElement(source) {
-    var tag = source.tagName.toLowerCase();
-    if (BLOCKED_MARKDOWN_TAGS[tag]) {
-      return emptyFragment();
-    }
-    if (tag === "img") {
-      return sanitizeImage(source);
-    }
-    if (tag === "input") {
-      return sanitizeInput(source);
-    }
-    if (!ALLOWED_MARKDOWN_TAGS[tag]) {
-      return sanitizeChildren(source);
-    }
-
-    var element = document.createElement(tag);
-
-    if (tag === "a") {
-      var href = sanitizeUrl(source.getAttribute("href"));
-      if (href) {
-        element.setAttribute("href", href);
-      }
-      if (source.hasAttribute("title")) {
-        element.setAttribute("title", source.getAttribute("title"));
-      }
-    } else if ((tag === "code" || tag === "pre") && source.className) {
-      var className = String(source.className || "").trim();
-      if (CODE_CLASS_RE.test(className)) {
-        element.className = className;
-      }
-    } else if (tag === "ol" && source.hasAttribute("start")) {
-      var start = parseInt(source.getAttribute("start"), 10);
-      if (!isNaN(start) && start > 0) {
-        element.setAttribute("start", String(start));
-      }
-    } else if (tag === "details" && source.hasAttribute("open")) {
-      element.setAttribute("open", "open");
-    }
-
-    if (tag === "td" || tag === "th") {
-      copyTextAlign(source, element);
-    }
-
-    if (tag !== "br" && tag !== "hr") {
-      element.appendChild(sanitizeChildren(source));
-    }
-
-    return element;
-  }
-
-  function sanitizeNode(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      return document.createTextNode(node.data || "");
-    }
-    if (node.nodeType !== Node.ELEMENT_NODE) {
-      return emptyFragment();
-    }
-    return sanitizeElement(node);
-  }
-
-  function buildSafeFragment(html) {
-    var parser = new DOMParser();
-    var parsed = parser.parseFromString(
-      "<!doctype html><body>" + String(html || "") + "</body>",
-      "text/html",
-    );
-    return sanitizeChildren(parsed.body);
-  }
-
-  function renderMarkdown(markdownText, renderer) {
-    if (renderer && typeof renderer.markdown === "function") {
-      return renderer.markdown(markdownText || "");
-    }
-    return String(markdownText || "");
-  }
-
-  function fragmentToHTML(fragment) {
-    var container = document.createElement("div");
-    container.appendChild(fragment);
-    return container.innerHTML;
+    return renderBlocks(tokens, { index: 0 });
   }
 
   global.NotebookSafeMarkdown = {
     buildFragment: function (markdownText, renderer) {
-      return buildSafeFragment(renderMarkdown(markdownText, renderer));
+      return buildMarkdownFragment(markdownText, renderer);
     },
     renderInto: function (container, markdownText, renderer) {
       if (!container) {
         return;
       }
-      container.replaceChildren(
-        buildSafeFragment(renderMarkdown(markdownText, renderer)),
-      );
-    },
-    renderToHTML: function (markdownText, renderer) {
-      return fragmentToHTML(
-        buildSafeFragment(renderMarkdown(markdownText, renderer)),
-      );
+      container.replaceChildren(buildMarkdownFragment(markdownText, renderer));
     },
   };
 

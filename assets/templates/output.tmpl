@@ -257,7 +257,6 @@
         highlightSearchResult(event.data);
       }
     });
-
     rawOutput = normalizeText(rawOutput);
     if (document.readyState === 'complete') notifySize();
     else window.addEventListener('load', notifySize);

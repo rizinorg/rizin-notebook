@@ -21,10 +21,8 @@ var embedTemplates embed.FS
 //go:embed assets/static/*
 var embedStatic embed.FS
 
-// Template helper functions: OutputToHtml, OutputToCsv, stringify, keybindings.
+// Template helper functions: stringify, keybindings.
 var functionMap = template.FuncMap{
-	"OutputToHtml": toHtml,
-	"OutputToCsv":  toCsv,
 	"stringify": func(v interface{}) string {
 		bytes, err := json.Marshal(v)
 		if err != nil {

@@ -59,7 +59,6 @@ func serverAddOutput(output *gin.RouterGroup) {
 			}
 		}
 
-		// Convert ANSI escape sequences to HTML.
 		htmlOutput := toHtml(string(data))
 
 		c.HTML(200, "output.tmpl", gin.H{
